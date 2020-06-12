@@ -21,7 +21,9 @@ def sde_walk(
     mu: float,
     lamba: float,
     up_lim: float,
-    low_lim: float
+    low_lim: float,
+    delta: float,
+    p: float
 ) -> np.ndarray:
 
 
@@ -40,10 +42,7 @@ def update_market() -> None:
     self.b_star = sde_walk(self.bstar)
 
     self.ctr += stats.norm.rvs(loc=0, scale=0.1*self.ctr_mu, size=self.n_slots)
-    self.cpc += 1
-
-    self.ctr += 1
-    self.cpc += 1
+    self.cpc += 
 
     # Simulate CTR's around group mean
     sigma = 0.5*mu
@@ -62,11 +61,12 @@ def simulate_data() -> Dict: # Tuple(np.ndarray, np.ndarray, np.ndarray)
     
     # TODO: Draw number of ad opportunities from poisson distribution with mean given by mean-reverting sde
 
-    # 
-    # Simulate impressions
-    imps = 
-    np.abs(np.floor(stats.norm.rvs(loc=250,scale=10, size=self.n_slots)))
+    # No need to draw competitors bid, just use his random walk. self.b_star is given
 
+    # Heisenberg bidding
+    our_bid = heisenberg_bidding(u) # ()
+    # TODO: Simulate impressions. Did we win the aucion?
+    imps = np.sum(our_bid > b_star) # for each adslot of course
 
     # build dict
     #cost, imps, clicks
