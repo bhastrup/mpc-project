@@ -12,3 +12,11 @@ for i in range(0,T-N):
 
     mpc.update_market()
     cost, imps, clicks = mpc.simulate_data()
+
+    # Update CPC from Karlsson method
+    
+    # Calculate matrix
+
+
+    # Update nominal bid
+    mpc.set_bid_multiplier(u)
