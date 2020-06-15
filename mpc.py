@@ -1,15 +1,18 @@
 import numpy as np
 from scipy import stats
+from scipy.stats import gamma
 from typing import Dict
 from typing import List
 
 class MPC():
     def __init__(
             self,
-            ctr_mu: float
+            ctr_mu: float,
+            n_slots: int
 
     ) -> None:
         self.ctr_mu = ctr_mu
+        self.n_slots = n_slots
 
     def wiener_process(
             self,
@@ -51,9 +54,9 @@ class MPC():
         """
 
         # compute time steps
-        dt = (tf-ti) / n
+        dt = (tf - ti)/n
         # compute drift term
-        drift_term = - lamba*(x_old-mu)
+        drift_term = - lamba*(x_old - mu)
 
         # compute diffusion term
         w = self.wiener_process(dt, n)  # obtain Wiener process
@@ -68,15 +71,13 @@ class MPC():
             self,
             ti,
             tf,
-            n,
-            n_slots
+            n
     ) -> None:
         """
         Evolves the underlying market parameters.
         :param ti: initial time
         :param tf: final time
         :param n: number of time steps
-        :param n_slots: number of ad slots
         """
         # TODO: Update expected number of impression opportunities for each adslot
         mu_ad_opportunities = 50
@@ -112,35 +113,36 @@ class MPC():
             p_b_star
         )
 
+        # simulate CTR around group mean
         self.ctr += stats.norm.rvs(loc=0, scale=0.1*self.ctr_mu, size=self.n_slots)
         self.cpc += 1
 
         self.ctr += 1
         self.cpc += 1
 
-        # Simulate CTR's around group mean
-        sigma = 0.5*mu
-        #CTR = np.random.normal(mu,sigma,   size=n_slots, random)
-        CTR = stats.norm.rvs(loc=self.ctr_mu, scale=sigma, size=n_slots)
-
-        if np.mean(CTR<0) > 0:
-            print("Increase mu or decrease sigma such that CTR is always positive")
-        CTR = np.abs(CTR)
+        if np.mean(self.ctr < 0) > 0:
+            print("Increase ctr_mu or decrease sigma such that CTR is always positive")
+        self.ctr = np.abs(self.ctr)
         return None
 
-    def simulate_data() -> Dict: # Tuple(np.ndarray, np.ndarray, np.ndarray)
+    def simulate_data(
+            self
+    ) -> Dict: # Tuple(np.ndarray, np.ndarray, np.ndarray)
         """
         Observe cost, impressions and click from the auction and ad serving.
         """
 
         # TODO: Draw number of ad opportunities from poisson distribution with mean given by mean-reverting sde
 
-        #
-        # Simulate impressions
-        imps =
-        np.abs(np.floor(stats.norm.rvs(loc=250,scale=10, size=self.n_slots)))
+        # No need to draw competitors bid, just use his random walk. self.b_star is given
 
-        # build dict
+        # Heisenberg bidding
+        our_bid = heisenberg_bidding(u)  # ()
+
+        # TODO: Simulate impressions. Did we win the aucion?
+        imps = np.sum(our_bid > self.b_star)  # for each adslot of course
+
+        # build ad data dict
         ad_data = {
             'cost': cost,
             'imps': imps,
@@ -148,3 +150,49 @@ class MPC():
         }
 
         return ad_data
+
+    def update_cpc_variables(
+            self,
+            lam_cpc_vars: float,
+            alpha_old: float,
+            beta_old: float,
+            cost: float,
+            clicks: float
+    ) -> Dict:
+        """
+        :param lam_cpc_vars: forgetting factor
+        :param alpha_old: shape parameter
+        :param beta_old: scale parameter
+        :param cost: observed cost
+        :param clicks: observed number of clicks
+        :return cpc_variables: clicks and cost collected
+        """
+
+        alpha = lam_cpc_vars*alpha_old + clicks
+        beta = lam_cpc_vars*beta_old + cost
+
+        cpc_variables = {
+            "alpha": alpha,
+            "beta": beta
+        }
+
+        return cpc_variables
+
+    def draw_cpc_inv(
+            self,
+            alpha_0,
+            alpha,
+            beta_0,
+            beta
+    ) -> float:
+
+        cpc_inv = gamma.rvs(
+            alpha_0 + alpha,
+            beta_0 + beta,
+            self.n_slots
+        )
+
+        return cpc_inv
+
+    def cost_linearization(self) -> Dict:
+        return cost_params
