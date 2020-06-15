@@ -6,7 +6,9 @@ N = 10  # Time horizon.
 T = 100  # Campaign length.
 n = 1000  # number of time steps.
 t = np.linspace(0., T, n)  # vector of times.
-ctr_mu = 0.01  # mean ctr value
+
+ctr_mu = 0.01  # mean ctr value.
+n_slots = 10  # number of ad slots
 
 # construct class
 mpc = MPC(ctr_mu)

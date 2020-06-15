@@ -1,14 +1,15 @@
 import numpy as np
 from scipy import stats
+from typing import Dict
+from typing import List
 
 class MPC():
     def __init__(
             self,
-            ctr_mu: ctr_mu
+            ctr_mu: float
 
     ) -> None:
         self.ctr_mu = ctr_mu
-
 
     def wiener_process(
             self,
@@ -67,24 +68,49 @@ class MPC():
             self,
             ti,
             tf,
-            n
+            n,
+            n_slots
     ) -> None:
         """
         Evolves the underlying market parameters.
-        :param param_name:
+        :param ti: initial time
+        :param tf: final time
+        :param n: number of time steps
+        :param n_slots: number of ad slots
         """
         # TODO: Update expected number of impression opportunities for each adslot
+        mu_ad_opportunities = 50
+        lamba_ad_opportunities = 0.99
+        delta_ad_opportunities = 0.01
+        p_ad_opportunities = 0.5
+
         self.ad_opportunities_rate = self.sde_walk(
             ti,
             tf,
             n,
             self.ad_opportunities_rate,
-            
-
+            mu_ad_opportunities,
+            lamba_ad_opportunities,
+            delta_ad_opportunities,
+            p_ad_opportunities
         )
 
         # TODO: Update expectation value of competitor bids for each adslot
-        self.b_star = self.sde_walk(self.bstar)
+        mu_b_star = 5.
+        lamba_b_star = 0.99
+        delta_b_star = 0.02
+        p_b_star = 0.5
+
+        self.b_star = self.sde_walk(
+            ti,
+            tf,
+            n,
+            self.b_star,
+            mu_b_star,
+            lamba_b_star,
+            delta_b_star,
+            p_b_star
+        )
 
         self.ctr += stats.norm.rvs(loc=0, scale=0.1*self.ctr_mu, size=self.n_slots)
         self.cpc += 1
@@ -114,7 +140,11 @@ class MPC():
         imps =
         np.abs(np.floor(stats.norm.rvs(loc=250,scale=10, size=self.n_slots)))
 
-
         # build dict
-        #cost, imps, clicks
+        ad_data = {
+            'cost': cost,
+            'imps': imps,
+            'clicks': clicks
+        }
+
         return ad_data
