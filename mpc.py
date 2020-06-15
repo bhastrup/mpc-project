@@ -1,6 +1,8 @@
 import numpy as np
 from scipy import stats
 from scipy.stats import gamma
+from misc import StanModel_cache
+
 from typing import Dict
 from typing import List
 
@@ -194,5 +196,42 @@ class MPC():
 
         return cpc_inv
 
-    def cost_linearization(self) -> Dict:
+    def cost_linearization(
+            self,
+            cost,
+            u
+    ) -> Dict:
+
+        # Stan initialization
+        iterations = 5000
+        warms = 1000
+        chains = 4
+
+        # create dict for Stan
+        stan_data = {
+            "N": self.n_slots,
+            "cost": cost,
+            "bid": u
+        }
+
+        # define Stan file or use cached model
+        stanfile = 'stanfiles/cost_linearization.stan'
+        model = StanModel_cache(model_file=stanfile)
+
+        # run Stan model
+        fit = model.sampling(
+            data=stan_data,
+            iter=warms + iterations,
+            chains=chains,
+            warmup=warms
+        )
+
+        # obtain parameter est
+        params = fit.extract()
+        a = params['a']
+        b = params['b']
+
+        # collect parameters in dict
+        cost_params = {"a": a, "b": b}
+
         return cost_params

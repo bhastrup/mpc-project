@@ -67,6 +67,10 @@ for i in range(0, T - N):
 
     # Find expression for cost as linear function of u: dCost/du=a, if cost is given by Cost=a*u+b.
     # We use weighted linear Bayesian regression (newest observations most important)
-    cost_params = mpc.cost_linearization()  # outputs a^omega, b^omega for omega=1,...,n_omega. (for each adslot of course)
+    cost_params = mpc.cost_linearization(
+        cost,
+        u
+    )  # outputs a^omega, b^omega for omega=1,...,n_omega. (for each adslot of course)
+
     a = cost_params["a"]
     b = cost_params["b"]
