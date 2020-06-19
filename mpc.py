@@ -3,18 +3,28 @@ from scipy import stats
 from scipy.stats import gamma
 from misc import StanModel_cache
 
-from typing import Dict
-from typing import List
+from typing import Dict, List
 
 class MPC():
     def __init__(
             self,
             ctr_mu: float,
-            n_slots: int
-
+            n_slots: int,
+            ad_opportunities_params: Dict,
+            ad_opportunities_rate_initial: np.ndarray,
+            b_star_params: Dict,
+            b_star_initial: np.ndarray,
+            ctr_params: Dict,
+            ctr_initial: np.ndarray
     ) -> None:
         self.ctr_mu = ctr_mu
         self.n_slots = n_slots
+        self.ad_opportunities_params = ad_opportunities_params
+        self.ad_opportunities_rate = ad_opportunities_rate_initial
+        self.b_star_params = b_star_params
+        self.b_star = b_star_initial
+        self.ctr_params = ctr_params
+        self.ctr = ctr_initial
 
     def wiener_process(
             self,
@@ -34,97 +44,86 @@ class MPC():
 
     def sde_walk(
             self,
-            ti: float,
-            tf: float,
-            n: int,
             x_old: np.ndarray,
             mu: float,
             lamba: float,
             delta: float,
-            p: float
+            p: float,
+            upper_bound: float,
+            lower_bound: float
     ) -> np.ndarray:
         """
-        Function for simulating stochastic differential equation
-        :param ti: initial time
-        :param tf: final time
-        :param n: number of time steps
+        Function for propagating time varying parameters according to a stochastic difference equation
         :param x_old: current x value
         :param mu: asymptotic mean
         :param lamba: decay/growth rate
         :param delta: size of noise
         :param p: x exponent
+        :param upper_bound: reflection boundary
+        :param lower_bound: reflection boundary
         """
 
-        # compute time steps
-        dt = (tf - ti)/n
-        # compute drift term
+        dim_x = len(x_old)
+
+        # Compute drift term
         drift_term = - lamba*(x_old - mu)
 
-        # compute diffusion term
-        w = self.wiener_process(dt, n)  # obtain Wiener process
-        diffusion_term = delta*(x_old**p)*w
+        # Compute diffusion term
+        diffusion_term = delta*(x_old**p)*np.random.randn(dim_x)
 
-        updated_random_walk = drift_term + diffusion_term
+        updated_random_walk = x_old + drift_term + diffusion_term
+        
+        # Reflect output in lower bound
+        lb_diff = updated_random_walk - lower_bound
+        updated_random_walk[lb_diff < 0] = updated_random_walk[lb_diff < 0] - 2*lb_diff[lb_diff < 0]
 
+        ub_diff = updated_random_walk - upper_bound
+        updated_random_walk[ub_diff > 0] = updated_random_walk[ub_diff > 0] - 2*ub_diff[ub_diff > 0]
+        
+        # https://benjaminmoll.com/wp-content/uploads/2019/07/Lecture4_2149.pdf
         return updated_random_walk
 
 
-    def update_market(
-            self,
-            ti,
-            tf,
-            n
-    ) -> None:
+    def update_market(self) -> None:
         """
         Evolves the underlying market parameters.
         :param ti: initial time
         :param tf: final time
         :param n: number of time steps
         """
-        # TODO: Update expected number of impression opportunities for each adslot
-        mu_ad_opportunities = 50
-        lamba_ad_opportunities = 0.99
-        delta_ad_opportunities = 0.01
-        p_ad_opportunities = 0.5
-
+        # Update expected number of impression opportunities for each adslot
         self.ad_opportunities_rate = self.sde_walk(
-            ti,
-            tf,
-            n,
             self.ad_opportunities_rate,
-            mu_ad_opportunities,
-            lamba_ad_opportunities,
-            delta_ad_opportunities,
-            p_ad_opportunities
+            self.ad_opportunities_params["mu"],
+            self.ad_opportunities_params["lamba"],
+            self.ad_opportunities_params["delta"],
+            self.ad_opportunities_params["p"],
+            self.ad_opportunities_params["upper_bound"],
+            self.ad_opportunities_params["lower_bound"]
         )
 
-        # TODO: Update expectation value of competitor bids for each adslot
-        mu_b_star = 5.
-        lamba_b_star = 0.99
-        delta_b_star = 0.02
-        p_b_star = 0.5
-
+        # Update expectation value of competitor bids for each adslot
         self.b_star = self.sde_walk(
-            ti,
-            tf,
-            n,
             self.b_star,
-            mu_b_star,
-            lamba_b_star,
-            delta_b_star,
-            p_b_star
+            self.b_star_params["mu"],
+            self.b_star_params["lamba"],
+            self.b_star_params["delta"],
+            self.b_star_params["p"],
+            self.b_star_params["upper_bound"],
+            self.b_star_params["lower_bound"]
         )
 
-        # simulate CTR around group mean
-        self.ctr += stats.norm.rvs(loc=0, scale=0.1*self.ctr_mu, size=self.n_slots)
-        self.cpc += 1
+        # Update CTR of each adslot
+        self.ctr = self.sde_walk(
+            self.ctr,
+            self.ctr_params["mu"],
+            self.ctr_params["lamba"],
+            self.ctr_params["delta"],
+            self.ctr_params["p"],
+            self.ctr_params["upper_bound"],
+            self.ctr_params["lower_bound"]
+        )
 
-        self.ctr += 1
-        self.cpc += 1
-
-        if np.mean(self.ctr < 0) > 0:
-            print("Increase ctr_mu or decrease sigma such that CTR is always positive")
-        self.ctr = np.abs(self.ctr)
         return None
 
     def simulate_data(
