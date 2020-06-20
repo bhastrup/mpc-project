@@ -127,38 +127,63 @@ class MPC():
         return None
 
 
-    def nb_samples(self, mu: np.ndarray, dispersion: np.ndarray, size: int) -> np.ndarray:
+    def nb_samples(
+            self,
+            mu: np.ndarray,
+            dispersion: np.ndarray,
+            size: int
+    ) -> np.ndarray:
         """
-        Computes samples for the negative binomial distribution with mu/phi parameterization
+        Computes samples for the negative binomial distribution with mu/phi parameterization:
+            https://mc-stan.org/docs/2_19/functions-reference/nbalt.html
 
-        Args:
-            mu: numpy array, beware of broadcasting!
-            dispersion: numpy array, beware of broadcasting!
-            size: number of samples
-
-        Returns:
-            Numpy array.
+        :param mu: mean value
+        :param dispersion: excess variance relative to poisson distribution
+        :param size: number of samples
         """
 
         return np.random.poisson(np.random.gamma(shape=dispersion, scale=mu / dispersion, size=size))
 
+
+    def heisenberg_bidding(
+            self,
+            bid_price: np.ndarray,
+            bid_uncertainty: np.ndarray
+    ) -> np.ndarray:
+        """
+        Randomizes bids to smoothen plant gain related to impressions won vs bid price
+        param: bid_price: nominal bid price
+        param: bid_uncertainty: bid price uncertainty 
+        """
+
+        randomized_bids = np.random.gamma(
+            shape=1/bid_uncertainty**2,
+            scale=bid_price*bid_uncertainty**2
+        )
+
+        return randomized_bids
 
     def simulate_data(self) -> Dict: # Tuple(np.ndarray, np.ndarray, np.ndarray)
         """
         Observe cost, impressions and click from the auction and ad serving.
         """
 
-        # Draw number of ad opportunities from poisson distribution with mean given by mean-reverting sde
-        imps = self.nb_samples(
+        # Draw number of ad opportunities from neg_binom distribution with mean given by mean-reverting sde
+        ad_opportunities = self.nb_samples(
             self.ad_opportunities_rate,
             self.ad_opportunities_params["phi"]*self.ad_opportunities_rate,
             self.n_slots
         )
-        # No need to draw competitors bid, just use his random walk. self.b_star is given
 
-        # Heisenberg bidding
-        #our_bid = heisenberg_bidding(u)  # ()
-
+        # Heisenberg bidding, Karlsson page 26
+        #realized_bid = self.heisenberg_bidding(
+        #    self.bid_price,
+        #    self.bid_uncertainty,
+        #    self.ad_opportunities
+        #)
+        # The function above is only for one adslot.
+        # Heisenberg function should be able to calculate realized bid in all adslots simultaneously
+        # No need to draw competitors bid, just use their random walk. self.b_star is given
         # TODO: Simulate impressions. Did we win the aucion?
         #imps = np.sum(our_bid > self.b_star)  # for each adslot of course
 
