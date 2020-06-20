@@ -18,7 +18,8 @@ ad_opportunities_params = {
     "delta": 0.1,
     "p": 0.5,
     "upper_bound": 5*50,
-    "lower_bound": 25
+    "lower_bound": 25,
+    "phi": 0.1
 }
 b_star_initial = ctr_mu + 0.2*ctr_mu*np.random.randn(n_slots)
 b_star_params = {

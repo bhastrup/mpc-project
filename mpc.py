@@ -126,28 +126,47 @@ class MPC():
 
         return None
 
-    def simulate_data(
-            self
-    ) -> Dict: # Tuple(np.ndarray, np.ndarray, np.ndarray)
+
+    def nb_samples(self, mu: np.ndarray, dispersion: np.ndarray, size: int) -> np.ndarray:
+        """
+        Computes samples for the negative binomial distribution with mu/phi parameterization
+
+        Args:
+            mu: numpy array, beware of broadcasting!
+            dispersion: numpy array, beware of broadcasting!
+            size: number of samples
+
+        Returns:
+            Numpy array.
+        """
+
+        return np.random.poisson(np.random.gamma(shape=dispersion, scale=mu / dispersion, size=size))
+
+
+    def simulate_data(self) -> Dict: # Tuple(np.ndarray, np.ndarray, np.ndarray)
         """
         Observe cost, impressions and click from the auction and ad serving.
         """
 
-        # TODO: Draw number of ad opportunities from poisson distribution with mean given by mean-reverting sde
-
+        # Draw number of ad opportunities from poisson distribution with mean given by mean-reverting sde
+        imps = self.nb_samples(
+            self.ad_opportunities_rate,
+            self.ad_opportunities_params["phi"]*self.ad_opportunities_rate,
+            self.n_slots
+        )
         # No need to draw competitors bid, just use his random walk. self.b_star is given
 
         # Heisenberg bidding
-        our_bid = heisenberg_bidding(u)  # ()
+        #our_bid = heisenberg_bidding(u)  # ()
 
         # TODO: Simulate impressions. Did we win the aucion?
-        imps = np.sum(our_bid > self.b_star)  # for each adslot of course
+        #imps = np.sum(our_bid > self.b_star)  # for each adslot of course
 
         # build ad data dict
         ad_data = {
-            'cost': cost,
-            'imps': imps,
-            'clicks': clicks
+        #    'cost': cost,
+            'imps': imps
+        #    'clicks': clicks
         }
 
         return ad_data
