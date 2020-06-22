@@ -63,6 +63,7 @@ class MPC():
         :param lower_bound: reflection boundary
         """
 
+        # Obtain dimensions of x
         dim_x = len(x_old)
 
         # Compute drift term
@@ -71,6 +72,7 @@ class MPC():
         # Compute diffusion term
         diffusion_term = delta*(x_old**p)*np.random.randn(dim_x)
 
+        # Update the random walk
         updated_random_walk = x_old + drift_term + diffusion_term
         
         # Reflect output in lower bound
@@ -87,9 +89,6 @@ class MPC():
     def update_market(self) -> None:
         """
         Evolves the underlying market parameters.
-        :param ti: initial time
-        :param tf: final time
-        :param n: number of time steps
         """
         # Update expected number of impression opportunities for each adslot
         self.ad_opportunities_rate = self.sde_walk(
@@ -142,7 +141,15 @@ class MPC():
         :param size: number of samples
         """
 
-        return np.random.poisson(np.random.gamma(shape=dispersion, scale=mu / dispersion, size=size))
+        nb_samples = np.random.poisson(
+            np.random.gamma(
+                shape=dispersion,
+                scale=mu / dispersion,
+                size=size
+            )
+        )
+
+        return nb_samples
 
 
     def heisenberg_bidding(
@@ -163,7 +170,7 @@ class MPC():
 
         return randomized_bids
 
-    def simulate_data(self) -> Dict: # Tuple(np.ndarray, np.ndarray, np.ndarray)
+    def simulate_data(self) -> Dict:  # Tuple(np.ndarray, np.ndarray, np.ndarray)
         """
         Observe cost, impressions and click from the auction and ad serving.
         """
