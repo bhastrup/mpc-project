@@ -2,6 +2,18 @@ import numpy as np
 from mpc import MPC
 from params import *
 
+# construct MPC class
+mpc = MPC(
+    ctr_mu,
+    n_slots,
+    ad_opportunities_params,
+    ad_opportunities_rate_initial,
+    b_star_params,
+    b_star_initial,
+    ctr_params,
+    ctr_initial
+)
+
 # Run the simulation
 for i in range(0, T - N):
 

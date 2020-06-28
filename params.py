@@ -1,5 +1,4 @@
 import numpy as np
-from mpc import MPC
 
 # Define MPC parameters
 N = 10  # Time horizon.
@@ -72,7 +71,7 @@ b_star_params = {
 # Define cost-per-click parameters
 lam_cpc_vars = 0.9  # forgetting factor related to CPC var update
 
-# gamma (cpc) distribution parameters
+# gamma (CPC) distribution parameters
 alpha_0 = 1
 beta_0 = 1
 alpha_vec = []
@@ -80,14 +79,3 @@ beta_vec = []
 alpha_vec.append(alpha_0)
 beta_vec.append(beta_0)
 
-# construct class
-mpc = MPC(
-    ctr_mu,
-    n_slots,
-    ad_opportunities_params,
-    ad_opportunities_rate_initial,
-    b_star_params,
-    b_star_initial,
-    ctr_params,
-    ctr_initial
-)
