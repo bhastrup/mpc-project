@@ -12,15 +12,9 @@ parameters {
 }
 
 model {
-  vector[N_slots] cost_pred;
+    cost ~ normal(a + u * b, sigma);
 
-  b ~ normal(0,1);
-
-  for(i in 1:N_slots){
-    cost_pred ~ normal(a + u * b, sigma);
-  }
-
-  for(i in 1:N_slots){
-    target += normal_lpdf(cost[i] | cost_pred[i], sigma) * weights[i];
-  }
+    for (n in 1:N_slots) {
+        target += weights[N_slots] * normal_lpdf(cost[N_slots] | a*u[N_slots] + b, sigma);
+}
 }
