@@ -15,7 +15,10 @@ class MPC():
             b_star_params: Dict,
             b_star_initial: np.ndarray,
             ctr_params: Dict,
-            ctr_initial: np.ndarray
+            ctr_initial: np.ndarray,
+            cov: float,
+            bid_price_initial: np.ndarray
+            
     ) -> None:
         self.ctr_mu = ctr_mu
         self.n_slots = n_slots
@@ -25,6 +28,8 @@ class MPC():
         self.b_star = b_star_initial
         self.ctr_params = ctr_params
         self.ctr = ctr_initial
+        self.cov = cov
+        self.bid_price = bid_price_initial
 
     def wiener_process(
             self,
@@ -50,7 +55,8 @@ class MPC():
             delta: float,
             p: float,
             upper_bound: float,
-            lower_bound: float
+            lower_bound: float,
+            dw: np.ndarray
     ) -> np.ndarray:
         """
         Function for propagating time varying parameters according to a stochastic difference equation
@@ -70,7 +76,7 @@ class MPC():
         drift_term = - lamba*(x_old - mu)
 
         # Compute diffusion term
-        diffusion_term = delta*(x_old**p)*np.random.randn(dim_x)
+        diffusion_term = delta*(x_old**p)*dw
 
         # Update the random walk
         updated_random_walk = x_old + drift_term + diffusion_term
@@ -98,9 +104,23 @@ class MPC():
             self.ad_opportunities_params["delta"],
             self.ad_opportunities_params["p"],
             self.ad_opportunities_params["upper_bound"],
-            self.ad_opportunities_params["lower_bound"]
+            self.ad_opportunities_params["lower_bound"],
+            np.random.randn(self.n_slots)
         )
+        
 
+        # Specify correlation bewteen ctr and b_star
+        mean = np.zeros(2)
+        cov_matrix = np.array(
+            [[1, self.cov],
+            [self.cov, 1]]
+        )
+        # Draw correlated Wiener realization
+        dw = np.random.multivariate_normal(
+            mean=mean,
+            cov=cov_matrix,
+            size=self.n_slots
+        )
         # Update expectation value of competitor bids for each adslot
         self.b_star = self.sde_walk(
             self.b_star,
@@ -109,7 +129,8 @@ class MPC():
             self.b_star_params["delta"],
             self.b_star_params["p"],
             self.b_star_params["upper_bound"],
-            self.b_star_params["lower_bound"]
+            self.b_star_params["lower_bound"],
+            dw[:,0]
         )
 
         # Update CTR of each adslot
@@ -120,7 +141,8 @@ class MPC():
             self.ctr_params["delta"],
             self.ctr_params["p"],
             self.ctr_params["upper_bound"],
-            self.ctr_params["lower_bound"]
+            self.ctr_params["lower_bound"],
+            dw[:,1]
         )
 
         return None
@@ -155,7 +177,8 @@ class MPC():
     def heisenberg_bidding(
             self,
             bid_price: np.ndarray,
-            bid_uncertainty: np.ndarray
+            bid_uncertainty: np.ndarray,
+            ad_opportunities: np.ndarray
     ) -> np.ndarray:
         """
         Randomizes bids to smoothen plant gain related to impressions won vs bid price
@@ -165,7 +188,8 @@ class MPC():
 
         randomized_bids = np.random.gamma(
             shape=1/bid_uncertainty**2,
-            scale=bid_price*bid_uncertainty**2
+            scale=bid_price*bid_uncertainty**2,
+            size=ad_opportunities
         )
 
         return randomized_bids
@@ -183,25 +207,27 @@ class MPC():
         )
 
         # Heisenberg bidding, Karlsson page 26
-        #realized_bid = self.heisenberg_bidding(
-        #    self.bid_price,
-        #    self.bid_uncertainty,
-        #    self.ad_opportunities
-        #)
+        realized_bid = self.heisenberg_bidding(
+            self.bid_price,
+            self.bid_uncertainty,
+            ad_opportunities
+        )
         # The function above is only for one adslot.
         # Heisenberg function should be able to calculate realized bid in all adslots simultaneously
+
         # No need to draw competitors bid, just use their random walk. self.b_star is given
+        
         # TODO: Simulate impressions. Did we win the aucion?
         #imps = np.sum(our_bid > self.b_star)  # for each adslot of course
 
         # build ad data dict
-        ad_data = {
+        #ad_data = {
         #    'cost': cost,
-            'imps': imps
+        #    'imps': imps
         #    'clicks': clicks
-        }
+        #}
 
-        return ad_data
+        return realized_bid
 
     def update_cpc_variables(
             self,
@@ -232,16 +258,14 @@ class MPC():
 
     def draw_cpc_inv(
             self,
-            alpha_0,
             alpha,
-            beta_0,
             beta
     ) -> float:
 
-        cpc_inv = gamma.rvs(
-            alpha_0 + alpha,
-            beta_0 + beta,
-            self.n_slots
+        cpc_inv = np.random.gamma(
+            shape=alpha,
+            scale=beta,
+            size=self.n_slots
         )
 
         return cpc_inv
@@ -285,3 +309,16 @@ class MPC():
         cost_params = {"a": a, "b": b}
 
         return cost_params
+
+
+    def set_bid_price(u: np.ndarray) -> None:
+        """
+        Updates the bid price that was calculated using Model Predictive Control
+        param u: Entire control sequence of bid prices
+        """
+
+        self.bid_price = u[:,0]
+
+        # TODO: Define some constraints that prevents setting a dangerously high bid
+        
+        return None

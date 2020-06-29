@@ -11,7 +11,9 @@ mpc = MPC(
     b_star_params,
     b_star_initial,
     ctr_params,
-    ctr_initial
+    ctr_initial,
+    cov,
+    bid_price_initial
 )
 
 # Run the simulation
@@ -28,32 +30,22 @@ for i in range(0, T - N):
     # Update alpha and beta cf. Karlsson p.30, Eq. [24] and [25]
     cpc_variables = mpc.update_cpc_variables(
         lam_cpc_vars,
-        alpha_vec[i],
-        beta_vec[i],
+        alpha,
+        beta,
         cost,
         clicks
     )
 
     alpha = cpc_variables["alpha"]
     beta = cpc_variables["beta"]
-    alpha_vec.append(alpha)
-    beta_vec.append(beta)
 
     # Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
-    cpc_inv = mpc.draw_cpc_inv(
-        alpha_0,
-        alpha,
-        beta_0,
-        beta
-    )
+    cpc_inv = mpc.draw_cpc_inv(alpha, beta)
 
     # Find expression for cost as linear function of u: dCost/du=a, if cost is given by Cost=a*u+b.
     # We use weighted linear Bayesian regression (newest observations most important)
-    cost_params = mpc.cost_linearization(
-        cost,
-        u
-    )  # outputs a^omega, b^omega for omega=1,...,n_omega. (for each adslot of course)
-
+    cost_params = mpc.cost_linearization(cost,u)
+    # outputs a^omega, b^omega for omega=1,...,n_omega. (for each adslot of course)
     a = cost_params["a"]
     b = cost_params["b"]
 
@@ -72,4 +64,4 @@ for i in range(0, T - N):
     # Solve convex optimization problem using CVXPY
 
     # Update nominal bid
-    mpc.set_bid_multiplier(u)
+    mpc.set_bid_price(u)

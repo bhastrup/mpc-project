@@ -8,6 +8,7 @@ t = np.linspace(0., T, n)  # vector of times.
 
 # Define general ad parameters
 n_slots = 10  # number of ad slots
+cov = 0.8 # Covariance between b_star and ctr
 
 # Define click-through-rate parameters
 ctr_mu = 0.01  # mean ctr value.
@@ -36,7 +37,7 @@ ad_opportunities_delta = 0.1
 ad_opportunities_p = 0.5
 ad_opportunities_ub = 5 * ad_opportunities_mu
 ad_opportunities_lb = 0.5 * ad_opportunities_mu
-ad_opportunities_phi = 0.1
+ad_opportunities_phi = 2
 
 # Setup the ad opportunity dictionary
 ad_opportunities_params = {
@@ -67,6 +68,8 @@ b_star_params = {
     "upper_bound": b_star_ub,
     "lower_bound": b_star_lb
 }
+
+bid_price_initial = ctr_mu
 
 # Define cost-per-click parameters
 lam_cpc_vars = 0.9  # forgetting factor related to CPC var update
