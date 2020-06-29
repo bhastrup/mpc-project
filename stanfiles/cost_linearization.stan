@@ -1,6 +1,5 @@
 data {
   int<lower=0>  N_slots;              // number of ad slots
-  int<lower=0> K;                     // number of predictors
   vector[N_slots] cost;               // outcome vector
   vector[N_slots] u;                  // predictor vector
   vector<lower=0>[N_slots] weights;   // model weights
