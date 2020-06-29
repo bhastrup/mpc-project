@@ -6,19 +6,20 @@ data {
 }
 
 parameters {
-  real alpha;                   // intercept
-  vector[N_slots] beta;         // coefficients for predictors
-  real<lower=0> sigma;          // error sd
+  real a;                    // intercept
+  real b;                    // coefficients for predictors
+  real<lower=0> sigma;       // error sd
 }
 
 model {
-  real cost_pred[N_slots];
+  vector[N_slots] cost_pred;
 
-  beta ~ normal(0,1);
+  b ~ normal(0,1);
 
   for(i in 1:N_slots){
-    cost_pred[i] = a + u * b;
+    cost_pred ~ normal(a + u * b, sigma);
   }
+
   for(i in 1:N_slots){
     target += normal_lpdf(cost[i] | cost_pred[i], sigma) * weights[i];
   }
