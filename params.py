@@ -69,7 +69,8 @@ b_star_params = {
     "lower_bound": b_star_lb
 }
 
-bid_price_initial = ctr_mu
+bid_price_initial = ctr_initial
+bid_uncertainty_initial = 0.1*np.ones(n_slots) # 10% Heisenberg randomization
 
 # Define cost-per-click parameters
 lam_cpc_vars = 0.9  # forgetting factor related to CPC var update

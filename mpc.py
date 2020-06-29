@@ -17,8 +17,8 @@ class MPC():
             ctr_params: Dict,
             ctr_initial: np.ndarray,
             cov: float,
-            bid_price_initial: np.ndarray
-            
+            bid_price_initial: np.ndarray,
+            bid_uncertainty_initial: np.ndarray            
     ) -> None:
         self.ctr_mu = ctr_mu
         self.n_slots = n_slots
@@ -30,6 +30,7 @@ class MPC():
         self.ctr = ctr_initial
         self.cov = cov
         self.bid_price = bid_price_initial
+        self.bid_uncertainty = bid_uncertainty_initial
 
     def wiener_process(
             self,
@@ -107,9 +108,8 @@ class MPC():
             self.ad_opportunities_params["lower_bound"],
             np.random.randn(self.n_slots)
         )
-        
 
-        # Specify correlation bewteen ctr and b_star
+        # Specify correlation between ctr and b_star
         mean = np.zeros(2)
         cov_matrix = np.array(
             [[1, self.cov],
@@ -179,18 +179,23 @@ class MPC():
             bid_price: np.ndarray,
             bid_uncertainty: np.ndarray,
             ad_opportunities: np.ndarray
-    ) -> np.ndarray:
+    ) -> List:
         """
         Randomizes bids to smoothen plant gain related to impressions won vs bid price
         param: bid_price: nominal bid price
-        param: bid_uncertainty: bid price uncertainty 
+        param: bid_uncertainty: bid price uncertainty
         """
 
-        randomized_bids = np.random.gamma(
-            shape=1/bid_uncertainty**2,
-            scale=bid_price*bid_uncertainty**2,
-            size=ad_opportunities
-        )
+        randomized_bids = []
+
+        for i in range(len(ad_opportunities)):
+            randomized_bids.append(
+                np.random.gamma(
+                    shape=1/bid_uncertainty[i]**2,
+                    scale=bid_price[i]*bid_uncertainty[i]**2,
+                    size=ad_opportunities[i]
+                ).tolist()
+            )
 
         return randomized_bids
 
@@ -212,9 +217,6 @@ class MPC():
             self.bid_uncertainty,
             ad_opportunities
         )
-        # The function above is only for one adslot.
-        # Heisenberg function should be able to calculate realized bid in all adslots simultaneously
-
         # No need to draw competitors bid, just use their random walk. self.b_star is given
         
         # TODO: Simulate impressions. Did we win the aucion?
