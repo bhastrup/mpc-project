@@ -16,7 +16,8 @@ class MPC():
             b_star_initial: np.ndarray,
             ctr_params: Dict,
             ctr_initial: np.ndarray,
-            cov: float
+            cov: float,
+            bid_price_initial: np.ndarray
             
     ) -> None:
         self.ctr_mu = ctr_mu
@@ -28,6 +29,7 @@ class MPC():
         self.ctr_params = ctr_params
         self.ctr = ctr_initial
         self.cov = cov
+        self.bid_price = bid_price_initial
 
     def wiener_process(
             self,
@@ -307,3 +309,16 @@ class MPC():
         cost_params = {"a": a, "b": b}
 
         return cost_params
+
+
+    def set_bid_price(u: np.ndarray) -> None:
+        """
+        Updates the bid price that was calculated using Model Predictive Control
+        param u: Entire control sequence of bid prices
+        """
+
+        self.bid_price = u[:,0]
+
+        # TODO: Define some constraints that prevents setting a dangerously high bid
+        
+        return None
