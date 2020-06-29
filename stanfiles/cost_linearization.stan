@@ -17,7 +17,7 @@ model {
   beta ~ normal(0,1);
 
   for(i in 1:N_slots){
-    cost_pred[i] = alpha + u * beta;
+    cost_pred[i] = a + u * b;
   }
   for(i in 1:N_slots){
     target += normal_lpdf(cost[i] | cost_pred[i], sigma) * weights[i];
