@@ -283,9 +283,9 @@ class MPC():
 
         # create dict for Stan
         stan_data = {
-            "N": self.n_slots,
+            "N_slots": self.n_slots,
             "cost": cost,
-            "bid": u
+            "u": u
         }
 
         # define Stan file or use cached model
@@ -311,7 +311,7 @@ class MPC():
         return cost_params
 
 
-    def set_bid_price(u: np.ndarray) -> None:
+    def set_bid_price(self, u: np.ndarray) -> None:
         """
         Updates the bid price that was calculated using Model Predictive Control
         param u: Entire control sequence of bid prices
