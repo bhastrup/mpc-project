@@ -20,7 +20,7 @@ mpc = MPC(
 # Run the simulation
 for i in range(0, T - N):
 
-    # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b* 
+    # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b*
     mpc.update_market()
 
     # 2. Simulate action data + ad serving
@@ -47,7 +47,7 @@ for i in range(0, T - N):
 
     # Find expression for cost as linear function of u: dCost/du=a, if cost is given by Cost=a*u+b.
     # We use weighted linear Bayesian regression (newest observations most important)
-    cost_params = mpc.cost_linearization(cost,u)
+    cost_params = mpc.cost_linearization(cost, u)
     # outputs a^omega, b^omega for omega=1,...,n_omega. (for each adslot of course)
     a = cost_params["a"]
     b = cost_params["b"]

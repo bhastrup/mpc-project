@@ -217,19 +217,32 @@ class MPC():
             self.bid_uncertainty,
             ad_opportunities
         )
+
         # No need to draw competitors bid, just use their random walk. self.b_star is given
-        
-        # TODO: Simulate impressions. Did we win the aucion?
-        #imps = np.sum(our_bid > self.b_star)  # for each adslot of course
 
-        # build ad data dict
-        #ad_data = {
-        #    'cost': cost,
-        #    'imps': imps
-        #    'clicks': clicks
-        #}
+        # Calculate impressions won
+        imps = [np.sum(np.asarray(realized_bid[i]) > self.b_star[i]) for i in range(self.n_slots)]
+        imps = np.asarray(imps)
 
-        return realized_bid
+        # Calculate cost
+        cost = imps * self.b_star
+
+        # Simulate clicks
+        mu_clicks = imps * self.ctr
+        disp_clicks = 1.0 * mu_clicks
+
+        clicks = self.nb_samples(
+            mu=mu_clicks,
+            dispersion=disp_clicks,
+        )
+        # Hov: tænk over size til nb_samles?? 
+        ad_data = {
+            'cost': cost,
+            'imps': imps,
+            'clicks': clicks
+        }
+
+        return ad_data
 
     def update_cpc_variables(
             self,
@@ -313,7 +326,7 @@ class MPC():
         return cost_params
 
 
-    def set_bid_price(u: np.ndarray) -> None:
+    def set_bid_price(self, u: np.ndarray) -> None:
         """
         Updates the bid price that was calculated using Model Predictive Control
         param u: Entire control sequence of bid prices

@@ -52,7 +52,7 @@ ad_opportunities_params = {
 
 # Define parameters related to highest competitive bid
 b_star_mu = ctr_mu
-b_star_initial = b_star_mu + 0.2*b_star_mu*np.random.randn(n_slots)
+b_star_initial = ctr_initial
 b_star_lambda = 0.1
 b_star_delta = 0.1
 b_star_p = 0.5
