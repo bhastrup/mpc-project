@@ -298,7 +298,6 @@ class MPC():
     def cost_linearization(
             self,
             cost: np.ndarray,
-            u: np.ndarray,
             weights: np.ndarray
     ) -> Dict:
 
