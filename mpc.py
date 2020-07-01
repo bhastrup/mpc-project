@@ -295,8 +295,8 @@ class MPC():
 
     def cost_linearization(
             self,
-            cost,
-            u
+            cost: np.ndarray,
+            weights: np.ndarray
     ) -> Dict:
 
         # Stan initialization
@@ -304,18 +304,19 @@ class MPC():
         warms = 1000
         chains = 4
 
-        # create dict for Stan
+        # Create dictionary for Stan
         stan_data = {
-            "N": self.n_slots,
+            "N_slots": self.n_slots,
             "cost": cost,
-            "bid": u
+            "u": self.bid_price,
+            "weights": weights
         }
 
-        # define Stan file or use cached model
+        # Define Stan file or use cached model
         stanfile = 'stanfiles/cost_linearization.stan'
         model = StanModel_cache(model_file=stanfile)
 
-        # run Stan model
+        # Run Stan model
         fit = model.sampling(
             data=stan_data,
             iter=warms + iterations,
@@ -323,12 +324,12 @@ class MPC():
             warmup=warms
         )
 
-        # obtain parameter est
+        # Obbtain parameter estimates
         params = fit.extract()
         a = params['a']
         b = params['b']
 
-        # collect parameters in dict
+        # Collect parameters in dict
         cost_params = {"a": a, "b": b}
 
         return cost_params
@@ -337,10 +338,10 @@ class MPC():
     def set_bid_price(self, u: np.ndarray) -> None:
         """
         Updates the bid price that was calculated using Model Predictive Control
-        param u: Entire control sequence of bid prices
+        :param u: Entire control sequence of bid prices
         """
 
-        self.bid_price = u[:,0]
+        self.bid_price = u[:, 0]
 
         # TODO: Define some constraints that prevents setting a dangerously high bid
         

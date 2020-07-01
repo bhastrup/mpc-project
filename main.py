@@ -47,9 +47,18 @@ for i in range(0, T - N):
     # 4. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
     cpc_inv = mpc.draw_cpc_inv(alpha, beta)
 
-    # 5. Find expression for cost as linear function of u: dCost/du=a, if cost is given by Cost=a*u+b.
-    # We use weighted linear Bayesian regression (newest observations most important)
-    cost_params = mpc.cost_linearization(cost, u)
+    # 5. Linearization of cost using Bayesian regression
+
+    # Defining weight array (newest observations most important)
+    n_days_used = 10
+    decaying_rate = 0.9
+    weights = [decaying_rate**i for i in range(n_days_used)]
+
+    cost_params = mpc.cost_linearization(
+        cost,
+        weights
+    )
+
     # outputs a^omega, b^omega for omega=1,...,n_omega. (for each adslot of course)
     a = cost_params["a"]
     b = cost_params["b"]
