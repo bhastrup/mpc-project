@@ -83,3 +83,7 @@ beta_vec = []
 alpha_vec.append(alpha_0)
 beta_vec.append(beta_0)
 
+# Define weight array for cost linearization
+n_days_used = 10
+decaying_rate = 0.9
+weights = [decaying_rate ** i for i in range(n_days_used)]

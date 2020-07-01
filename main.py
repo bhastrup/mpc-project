@@ -48,12 +48,6 @@ for i in range(0, T - N):
     cpc_inv = mpc.draw_cpc_inv(alpha, beta)
 
     # 5. Linearization of cost using Bayesian regression
-
-    # Defining weight array (newest observations most important)
-    n_days_used = 10
-    decaying_rate = 0.9
-    weights = [decaying_rate**i for i in range(n_days_used)]
-
     cost_params = mpc.cost_linearization(
         cost,
         weights
