@@ -76,14 +76,15 @@ bid_uncertainty_initial = 0.5*np.ones(n_slots) # 50% Heisenberg randomization
 lam_cpc_vars = 0.9  # forgetting factor related to CPC var update
 
 # gamma (CPC) distribution parameters
-alpha_0 = 1
-beta_0 = 1
-alpha_vec = []
-beta_vec = []
-alpha_vec.append(alpha_0)
-beta_vec.append(beta_0)
+alpha = 1
+beta = 1
 
 # Define weight array for cost linearization
 n_days_used = 10
 decaying_rate = 0.9
 weights = [decaying_rate ** i for i in range(n_days_used)]
+
+# Initialze historic bids and costs for cost_linearization
+n_days_cost = 14
+past_costs = np.zeros((n_slots, n_days_cost))
+past_bids = np.zeros((n_slots, n_days_cost))

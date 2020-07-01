@@ -228,17 +228,17 @@ class MPC():
             [np.sum(np.asarray(realized_bid[i]) > self.b_star[i]) for i in range(self.n_slots)]
         )
 
-        print("imps")
-        print(imps)
+        #print("imps")
+        #print(imps)
         # Calculate cost
         cost = imps * self.b_star
-        print("cost")
-        print(cost)
+        #print("cost")
+        #print(cost)
         # Simulate clicks
         mu_clicks = imps * self.ctr
         disp_clicks = 1.0 * mu_clicks
-        print("disp_clicks")
-        print(disp_clicks)
+        #print("disp_clicks")
+        #print(disp_clicks)
 
         clicks = self.nb_samples(
             mu=mu_clicks,
@@ -338,10 +338,10 @@ class MPC():
     def set_bid_price(self, u: np.ndarray) -> None:
         """
         Updates the bid price that was calculated using Model Predictive Control
-        :param u: Entire control sequence of bid prices
+        :param u: First element of MPC calculated sequence of bid prices
         """
 
-        self.bid_price = u[:, 0]
+        self.bid_price = u
 
         # TODO: Define some constraints that prevents setting a dangerously high bid
         
@@ -357,3 +357,14 @@ class MPC():
         self.bid_uncertainty = alpha**(-1/2)
         
         return None
+
+
+    def update_history(self, old_array: np.ndarray, x: np.ndarray) -> np.ndarray:
+        """
+        Shifts all columns to the right, and puts x in the first column
+        """
+
+        new_array = np.roll(old_array, 1, axis=1)
+        new_array[:,0] = x
+
+        return new_array
