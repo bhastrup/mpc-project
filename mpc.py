@@ -335,6 +335,35 @@ class MPC():
         return cost_params
 
 
+    def dummy_cost_linearization(
+            self,
+            bids: np.ndarray,
+            costs: np.ndarray
+    ) -> Dict:
+        """
+        Cost linearization function for testing
+        Find expression for cost as linear function of u:
+        dCost/du=a, if cost is given by Cost=a*u+b.
+        :param bids: bids in ad slots
+        :param costs: costs in ad slots
+        :return cost_param: intercept a and slope b collected
+        """
+
+        a_params = []
+        b_params = []
+
+        for i in range(len(costs)):
+            a, b, r_value, p_value, std_err = stats.linregress(bids[i, :], costs[i, :])
+
+            a_params.append(a)
+            b_params.append(b)
+
+        # Collect parameters in dict
+        cost_params = {"a": a_params, "b": b_params}
+
+        return cost_params
+
+
     def set_bid_price(self, u: np.ndarray) -> None:
         """
         Updates the bid price that was calculated using Model Predictive Control
