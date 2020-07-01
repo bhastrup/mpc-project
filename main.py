@@ -17,8 +17,23 @@ mpc = MPC(
     bid_uncertainty_initial
 )
 
+# 0. Initialize campaign without MPC informed bidding
+for i in range(100):
+
+    ad_data = mpc.simulate_data()
+    cost = ad_data["cost"]
+
+    # Update historic cost data
+    past_costs = mpc.update_history(past_costs, cost)
+    past_bids = mpc.update_history(past_bids, mpc.bid_price)
+
+    # Update to new dum bid_price
+    u = mpc.ctr*(1 + 0.1*np.random.randn(mpc.n_slots))
+    mpc.set_bid_price(u)
+
+
 # Run the simulation
-for i in range(0, T - N):
+for i in range(T - N):
 
     # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b*
     mpc.update_market()
@@ -30,6 +45,8 @@ for i in range(0, T - N):
     imps = ad_data["imps"]
     clicks = ad_data["clicks"]
 
+    past_costs = mpc.update_history(past_costs, cost)
+    past_bids = mpc.update_history(past_bids, mpc.bid_price)
     # 3. Update alpha and beta cf. Karlsson p.30, Eq. [24] and [25] and set bid_uncertainty
     cpc_variables = mpc.update_cpc_variables(
         lam_cpc_vars,
@@ -47,9 +64,9 @@ for i in range(0, T - N):
     # 4. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
     cpc_inv = mpc.draw_cpc_inv(alpha, beta)
 
-    # 5. Linearization of cost using Bayesian regression
+    # 5. Linearization of cost using weighted Bayesian regression using last 10 obs
     cost_params = mpc.cost_linearization(
-        cost,
+        past_costs,
         weights
     )
 
@@ -61,9 +78,9 @@ for i in range(0, T - N):
     A = np.eye(2)
 
     # Contruct B from gradients of x=[clicks, cost] w.r.t. input
-    grad_cost = a # 
-    grad_clicks = cpc_inv * a
-    B = np.array([grad_clicks, grad_cost]) # maybe this is just a B^omega
+    #grad_cost = a # 
+    #grad_clicks = cpc_inv * a
+    #B = np.array([grad_clicks, grad_cost]) # maybe this is just a B^omega
 
     # Calculate matrix
 
@@ -72,4 +89,4 @@ for i in range(0, T - N):
     # Solve convex optimization problem using CVXPY
 
     # Update nominal bid
-    mpc.set_bid_price(u)
+    mpc.set_bid_price(u[:, 0])
