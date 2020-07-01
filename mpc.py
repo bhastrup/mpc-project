@@ -307,19 +307,19 @@ class MPC():
         warms = 1000
         chains = 4
 
-        # create dict for Stan
+        # Create dictionary for Stan
         stan_data = {
             "N_slots": self.n_slots,
             "cost": cost,
-            "u": u,
+            "u": self.bid_price,
             "weights": weights
         }
 
-        # define Stan file or use cached model
+        # Define Stan file or use cached model
         stanfile = 'stanfiles/cost_linearization.stan'
         model = StanModel_cache(model_file=stanfile)
 
-        # run Stan model
+        # Run Stan model
         fit = model.sampling(
             data=stan_data,
             iter=warms + iterations,
@@ -327,12 +327,12 @@ class MPC():
             warmup=warms
         )
 
-        # obtain parameter est
+        # Obbtain parameter estimates
         params = fit.extract()
         a = params['a']
         b = params['b']
 
-        # collect parameters in dict
+        # Collect parameters in dict
         cost_params = {"a": a, "b": b}
 
         return cost_params
