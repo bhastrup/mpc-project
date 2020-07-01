@@ -17,8 +17,8 @@ class MPC():
             ctr_params: Dict,
             ctr_initial: np.ndarray,
             cov: float,
-            bid_price_initial: np.ndarray
-            
+            bid_price_initial: np.ndarray,
+            bid_uncertainty_initial: np.ndarray            
     ) -> None:
         self.ctr_mu = ctr_mu
         self.n_slots = n_slots
@@ -30,6 +30,7 @@ class MPC():
         self.ctr = ctr_initial
         self.cov = cov
         self.bid_price = bid_price_initial
+        self.bid_uncertainty = bid_uncertainty_initial
 
     def wiener_process(
             self,
@@ -107,9 +108,9 @@ class MPC():
             self.ad_opportunities_params["lower_bound"],
             np.random.randn(self.n_slots)
         )
-        
-
-        # Specify correlation bewteen ctr and b_star
+        #print("ad_opportunities_rate")
+        #print(self.ad_opportunities_rate)
+        # Specify correlation between ctr and b_star
         mean = np.zeros(2)
         cov_matrix = np.array(
             [[1, self.cov],
@@ -132,7 +133,8 @@ class MPC():
             self.b_star_params["lower_bound"],
             dw[:,0]
         )
-
+        #print("b_star")
+        #print(self.b_star)
         # Update CTR of each adslot
         self.ctr = self.sde_walk(
             self.ctr,
@@ -144,6 +146,8 @@ class MPC():
             self.ctr_params["lower_bound"],
             dw[:,1]
         )
+        #print("ctr")
+        #print(self.ctr)
 
         return None
 
@@ -151,8 +155,7 @@ class MPC():
     def nb_samples(
             self,
             mu: np.ndarray,
-            dispersion: np.ndarray,
-            size: int
+            dispersion: np.ndarray
     ) -> np.ndarray:
         """
         Computes samples for the negative binomial distribution with mu/phi parameterization:
@@ -163,11 +166,12 @@ class MPC():
         :param size: number of samples
         """
 
+        eps = 0.0000001
+
         nb_samples = np.random.poisson(
             np.random.gamma(
                 shape=dispersion,
-                scale=mu / dispersion,
-                size=size
+                scale=mu / (dispersion + eps)
             )
         )
 
@@ -179,18 +183,23 @@ class MPC():
             bid_price: np.ndarray,
             bid_uncertainty: np.ndarray,
             ad_opportunities: np.ndarray
-    ) -> np.ndarray:
+    ) -> List:
         """
         Randomizes bids to smoothen plant gain related to impressions won vs bid price
         param: bid_price: nominal bid price
-        param: bid_uncertainty: bid price uncertainty 
+        param: bid_uncertainty: bid price uncertainty
         """
 
-        randomized_bids = np.random.gamma(
-            shape=1/bid_uncertainty**2,
-            scale=bid_price*bid_uncertainty**2,
-            size=ad_opportunities
-        )
+        randomized_bids = []
+
+        for i in range(len(ad_opportunities)):
+            randomized_bids.append(
+                np.random.gamma(
+                    shape=1/bid_uncertainty[i]**2,
+                    scale=bid_price[i]*bid_uncertainty[i]**2,
+                    size=ad_opportunities[i]
+                ).tolist()
+            )
 
         return randomized_bids
 
@@ -201,9 +210,8 @@ class MPC():
 
         # Draw number of ad opportunities from neg_binom distribution with mean given by mean-reverting sde
         ad_opportunities = self.nb_samples(
-            self.ad_opportunities_rate,
-            self.ad_opportunities_params["phi"]*self.ad_opportunities_rate,
-            self.n_slots
+            mu=self.ad_opportunities_rate,
+            dispersion=self.ad_opportunities_params["phi"]*self.ad_opportunities_rate
         )
 
         # Heisenberg bidding, Karlsson page 26
@@ -212,22 +220,39 @@ class MPC():
             self.bid_uncertainty,
             ad_opportunities
         )
-        # The function above is only for one adslot.
-        # Heisenberg function should be able to calculate realized bid in all adslots simultaneously
 
         # No need to draw competitors bid, just use their random walk. self.b_star is given
-        
-        # TODO: Simulate impressions. Did we win the aucion?
-        #imps = np.sum(our_bid > self.b_star)  # for each adslot of course
 
-        # build ad data dict
-        #ad_data = {
-        #    'cost': cost,
-        #    'imps': imps
-        #    'clicks': clicks
-        #}
+        # Calculate impressions won
+        imps = np.asarray(
+            [np.sum(np.asarray(realized_bid[i]) > self.b_star[i]) for i in range(self.n_slots)]
+        )
 
-        return realized_bid
+        print("imps")
+        print(imps)
+        # Calculate cost
+        cost = imps * self.b_star
+        print("cost")
+        print(cost)
+        # Simulate clicks
+        mu_clicks = imps * self.ctr
+        disp_clicks = 1.0 * mu_clicks
+        print("disp_clicks")
+        print(disp_clicks)
+
+        clicks = self.nb_samples(
+            mu=mu_clicks,
+            dispersion=disp_clicks
+#            size=self.n_slots
+        )
+        # Hov: tænk over size til nb_samles?? 
+        ad_data = {
+            'cost': cost,
+            'imps': imps,
+            'clicks': clicks
+        }
+
+        return ad_data
 
     def update_cpc_variables(
             self,

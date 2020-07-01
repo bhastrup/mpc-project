@@ -13,21 +13,24 @@ mpc = MPC(
     ctr_params,
     ctr_initial,
     cov,
-    bid_price_initial
+    bid_price_initial,
+    bid_uncertainty_initial
 )
 
 # Run the simulation
 for i in range(0, T - N):
 
+    # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b*
     mpc.update_market()
 
+    # 2. Simulate action data + ad serving
     ad_data = mpc.simulate_data()
 
     cost = ad_data["cost"]
     imps = ad_data["imps"]
     clicks = ad_data["clicks"]
 
-    # Update alpha and beta cf. Karlsson p.30, Eq. [24] and [25]
+    # 3. Update alpha and beta cf. Karlsson p.30, Eq. [24] and [25]
     cpc_variables = mpc.update_cpc_variables(
         lam_cpc_vars,
         alpha,
@@ -39,12 +42,12 @@ for i in range(0, T - N):
     alpha = cpc_variables["alpha"]
     beta = cpc_variables["beta"]
 
-    # Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
+    # 4. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
     cpc_inv = mpc.draw_cpc_inv(alpha, beta)
 
     # Find expression for cost as linear function of u: dCost/du=a, if cost is given by Cost=a*u+b.
     # We use weighted linear Bayesian regression (newest observations most important)
-    cost_params = mpc.cost_linearization(cost,u)
+    cost_params = mpc.cost_linearization(cost, u)
     # outputs a^omega, b^omega for omega=1,...,n_omega. (for each adslot of course)
     a = cost_params["a"]
     b = cost_params["b"]
