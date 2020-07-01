@@ -30,7 +30,7 @@ for i in range(0, T - N):
     imps = ad_data["imps"]
     clicks = ad_data["clicks"]
 
-    # 3. Update alpha and beta cf. Karlsson p.30, Eq. [24] and [25]
+    # 3. Update alpha and beta cf. Karlsson p.30, Eq. [24] and [25] and set bid_uncertainty
     cpc_variables = mpc.update_cpc_variables(
         lam_cpc_vars,
         alpha,
@@ -41,6 +41,8 @@ for i in range(0, T - N):
 
     alpha = cpc_variables["alpha"]
     beta = cpc_variables["beta"]
+
+    mpc.set_bid_uncertainty(alpha)
 
     # 4. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
     cpc_inv = mpc.draw_cpc_inv(alpha, beta)

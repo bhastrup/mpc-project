@@ -18,7 +18,7 @@ class MPC():
             ctr_initial: np.ndarray,
             cov: float,
             bid_price_initial: np.ndarray,
-            bid_uncertainty_initial: np.ndarray            
+            bid_uncertainty_initial: np.ndarray
     ) -> None:
         self.ctr_mu = ctr_mu
         self.n_slots = n_slots
@@ -192,7 +192,7 @@ class MPC():
 
         randomized_bids = []
 
-        for i in range(len(ad_opportunities)):
+        for i in range(self.n_slots):
             randomized_bids.append(
                 np.random.gamma(
                     shape=1/bid_uncertainty[i]**2,
@@ -243,9 +243,7 @@ class MPC():
         clicks = self.nb_samples(
             mu=mu_clicks,
             dispersion=disp_clicks
-#            size=self.n_slots
         )
-        # Hov: tænk over size til nb_samles?? 
         ad_data = {
             'cost': cost,
             'imps': imps,
@@ -346,5 +344,16 @@ class MPC():
         self.bid_price = u[:, 0]
 
         # TODO: Define some constraints that prevents setting a dangerously high bid
+        
+        return None
+
+
+    def set_bid_uncertainty(self, alpha: float) -> None:
+        """
+        Updates the bid price uncertainty, according to Karlsson page 32, equation (28)
+        param alpha: defined in Karlsson page 30, equation (24)
+        """
+
+        self.bid_uncertainty = alpha**(-1/2)
         
         return None
