@@ -108,7 +108,8 @@ class MPC():
             self.ad_opportunities_params["lower_bound"],
             np.random.randn(self.n_slots)
         )
-
+        #print("ad_opportunities_rate")
+        #print(self.ad_opportunities_rate)
         # Specify correlation between ctr and b_star
         mean = np.zeros(2)
         cov_matrix = np.array(
@@ -132,7 +133,8 @@ class MPC():
             self.b_star_params["lower_bound"],
             dw[:,0]
         )
-
+        #print("b_star")
+        #print(self.b_star)
         # Update CTR of each adslot
         self.ctr = self.sde_walk(
             self.ctr,
@@ -144,6 +146,8 @@ class MPC():
             self.ctr_params["lower_bound"],
             dw[:,1]
         )
+        #print("ctr")
+        #print(self.ctr)
 
         return None
 
@@ -151,8 +155,7 @@ class MPC():
     def nb_samples(
             self,
             mu: np.ndarray,
-            dispersion: np.ndarray,
-            size: int
+            dispersion: np.ndarray
     ) -> np.ndarray:
         """
         Computes samples for the negative binomial distribution with mu/phi parameterization:
@@ -163,11 +166,12 @@ class MPC():
         :param size: number of samples
         """
 
+        eps = 0.0000001
+
         nb_samples = np.random.poisson(
             np.random.gamma(
                 shape=dispersion,
-                scale=mu / dispersion,
-                size=size
+                scale=mu / (dispersion + eps)
             )
         )
 
@@ -206,9 +210,8 @@ class MPC():
 
         # Draw number of ad opportunities from neg_binom distribution with mean given by mean-reverting sde
         ad_opportunities = self.nb_samples(
-            self.ad_opportunities_rate,
-            self.ad_opportunities_params["phi"]*self.ad_opportunities_rate,
-            self.n_slots
+            mu=self.ad_opportunities_rate,
+            dispersion=self.ad_opportunities_params["phi"]*self.ad_opportunities_rate
         )
 
         # Heisenberg bidding, Karlsson page 26
@@ -221,19 +224,26 @@ class MPC():
         # No need to draw competitors bid, just use their random walk. self.b_star is given
 
         # Calculate impressions won
-        imps = [np.sum(np.asarray(realized_bid[i]) > self.b_star[i]) for i in range(self.n_slots)]
-        imps = np.asarray(imps)
+        imps = np.asarray(
+            [np.sum(np.asarray(realized_bid[i]) > self.b_star[i]) for i in range(self.n_slots)]
+        )
 
+        print("imps")
+        print(imps)
         # Calculate cost
         cost = imps * self.b_star
-
+        print("cost")
+        print(cost)
         # Simulate clicks
         mu_clicks = imps * self.ctr
         disp_clicks = 1.0 * mu_clicks
+        print("disp_clicks")
+        print(disp_clicks)
 
         clicks = self.nb_samples(
             mu=mu_clicks,
-            dispersion=disp_clicks,
+            dispersion=disp_clicks
+#            size=self.n_slots
         )
         # Hov: tænk over size til nb_samles?? 
         ad_data = {
