@@ -131,7 +131,7 @@ class MPC():
             self.b_star_params["p"],
             self.b_star_params["upper_bound"],
             self.b_star_params["lower_bound"],
-            dw[:,0]
+            dw[:, 0]
         )
         #print("b_star")
         #print(self.b_star)
@@ -144,13 +144,12 @@ class MPC():
             self.ctr_params["p"],
             self.ctr_params["upper_bound"],
             self.ctr_params["lower_bound"],
-            dw[:,1]
+            dw[:, 1]
         )
         #print("ctr")
         #print(self.ctr)
 
         return None
-
 
     def nb_samples(
             self,
@@ -163,7 +162,7 @@ class MPC():
 
         :param mu: mean value
         :param dispersion: excess variance relative to poisson distribution
-        :param size: number of samples
+        :return nb_samples: the obtained samples
         """
 
         eps = 0.0000001
@@ -299,45 +298,47 @@ class MPC():
 
     def cost_linearization(
             self,
-            cost: np.ndarray,
-            weights: np.ndarray
+            costs: np.ndarray,
+            bids: np.ndarray,
+            weights: np.ndarray,
+            n_days_cost: int
     ) -> Dict:
 
-        # Stan initialization
-        iterations = 5000
-        warms = 1000
-        chains = 4
+        a_params = []
+        b_params = []
 
-        # Create dictionary for Stan
-        stan_data = {
-            "N_slots": self.n_slots,
-            "cost": cost,
-            "u": self.bid_price,
-            "weights": weights
-        }
-
-        # Define Stan file or use cached model
+        # define Stan file path
         stanfile = 'stanfiles/cost_linearization.stan'
-        model = StanModel_cache(model_file=stanfile)
 
-        # Run Stan model
-        fit = model.sampling(
-            data=stan_data,
-            iter=warms + iterations,
-            chains=chains,
-            warmup=warms
-        )
+        for slots_i in range(self.n_slots):
+            u_tilde = bids[slots_i, :] - np.mean(bids[slots_i, :])
 
-        # Obbtain parameter estimates
-        params = fit.extract()
-        a = params['a']
-        b = params['b']
+            # create dict for Stan
+            stan_data = {
+                "n_days": n_days_cost,
+                "cost": costs[slots_i, :],
+                "u": u_tilde,
+                "weights": weights
+            }
+
+            # Compile or used the cached Stan model
+            model = StanModel_cache(model_file=stanfile)
+
+            # run Stan model
+            fit = model.sampling(data=stan_data, chains=4, iter=1000)
+
+            # Obbtain parameter estimates
+            params = fit.extract()
+            a = params['a']
+            b = params['b']
+
+            a_params.append(a)
+            b_params.append(b)
 
         # Collect parameters in dict
-        cost_params = {"a": a, "b": b}
+        cost_params = {"a": a_params, "b": b_params}
 
         return cost_params
-
 
     def dummy_cost_linearization(
             self,
@@ -398,6 +399,6 @@ class MPC():
         """
 
         new_array = np.roll(old_array, 1, axis=1)
-        new_array[:,0] = x
+        new_array[:, 0] = x
 
         return new_array
