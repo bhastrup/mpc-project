@@ -66,9 +66,11 @@ for i in range(T - N):
     cpc_inv = mpc.draw_cpc_inv(alpha, beta, n_samples)
 
     # 5. Linearization of cost using weighted Bayesian regression using last 10 obs
-    cost_params = mpc.dummy_cost_linearization(
-        past_bids,
-        past_costs
+    cost_params = mpc.cost_linearization(
+        costs=past_costs,
+        bids=past_bids,
+        weights=weights,
+        n_days_cost=n_days_cost
     )
 
     # outputs a^omega, b^omega for omega=1,...,n_omega. (for each adslot of course)
