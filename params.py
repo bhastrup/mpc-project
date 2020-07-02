@@ -80,11 +80,10 @@ alpha = 1
 beta = 1
 
 # Define weight array for cost linearization
-n_days_used = 10
+n_days_cost = 14
 decaying_rate = 0.9
-weights = [decaying_rate ** i for i in range(n_days_used)]
+weights = [decaying_rate ** i for i in range(n_days_cost    )]
 
 # Initialze historic bids and costs for cost_linearization
-n_days_cost = 14
 past_costs = np.zeros((n_slots, n_days_cost))
 past_bids = np.zeros((n_slots, n_days_cost))
