@@ -20,6 +20,7 @@ class MPC():
             bid_price_initial: np.ndarray,
             bid_uncertainty_initial: np.ndarray
     ) -> None:
+        self.cost = 0
         self.ctr_mu = ctr_mu
         self.n_slots = n_slots
         self.ad_opportunities_params = ad_opportunities_params
