@@ -85,8 +85,6 @@ for i in range(T - N):
 
     # Calculate matrix
 
-    # Specify rho, penalty of violating soft output constraint
-    
     # Solve convex optimization problem using CVXPY
 
     # Update nominal bid
