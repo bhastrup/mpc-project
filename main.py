@@ -66,17 +66,33 @@ for i in range(T - N):
     cpc_inv = mpc.draw_cpc_inv(alpha, beta, n_samples)
 
     # 5. Linearization of cost using weighted Bayesian regression using last 10 obs
-    cost_params = mpc.dummy_cost_linearization(
-        past_bids,
-        past_costs
+    cost_params = mpc.cost_linearization(
+        costs=past_costs,
+        bids=past_bids,
+        weights=weights,
+        n_days_cost=n_days_cost
     )
 
-    # outputs a^omega, b^omega for omega=1,...,n_omega. (for each adslot of course)
-    a = cost_params["a"]
-    b = cost_params["b"]
+    # Extract slope and intercept, both dim = n_samples x n_slots
+    A_mat = np.array(cost_params["a"]) # cost slopes, a^omega
+    b = np.array(cost_params["b"]) # cost intercepts, b^omega
 
     # Construct A (trivial)
     A = np.eye(2)
+
+    # Build unit matrix for broadcasting of b
+    I_intercept = np.zeros((mpc.n_slots, N))
+
+    # Build upper triangular matrix of ones
+    I_upper = np.zeros((N,N))
+    upper_triangle_indices = np.triu_indices(N)
+    I_upper[upper_triangle_indices] = 1
+
+    # Calculate reference trajectory
+    y_ref = np.linspace(mpc.cost, y_target[i+N], N+1)[1:]
+    y_ref = np.outer(np.ones(n_samples), y_ref)
+
+
 
     # Contruct B from gradients of x=[clicks, cost] w.r.t. input
     grad_cost = a

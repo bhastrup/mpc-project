@@ -1,7 +1,7 @@
 import numpy as np
 
 # Define MPC parameters
-N = 10  # Time horizon.
+N = 14  # Time horizon.
 T = 100  # Campaign length.
 n = 1000  # number of time steps.
 t = np.linspace(0., T, n)  # vector of times.
@@ -74,7 +74,7 @@ bid_uncertainty_initial = 0.5*np.ones(n_slots) # 50% Heisenberg randomization
 
 # Define cost-per-click parameters
 lam_cpc_vars = 0.9  # forgetting factor related to CPC var update
-n_sample = 50
+n_samples = 50
 # gamma (CPC) distribution parameters
 alpha = 1
 beta = 1
@@ -87,3 +87,9 @@ weights = [decaying_rate ** i for i in range(n_days_cost    )]
 # Initialze historic bids and costs for cost_linearization
 past_costs = np.zeros((n_slots, n_days_cost))
 past_bids = np.zeros((n_slots, n_days_cost))
+
+
+# Campaign budget
+budget = 1000
+y_target = np.linspace(0,T,T+1)
+
