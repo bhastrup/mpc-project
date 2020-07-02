@@ -47,6 +47,7 @@ for i in range(T - N):
 
     past_costs = mpc.update_history(past_costs, cost)
     past_bids = mpc.update_history(past_bids, mpc.bid_price)
+
     # 3. Update alpha and beta cf. Karlsson p.30, Eq. [24] and [25] and set bid_uncertainty
     cpc_variables = mpc.update_cpc_variables(
         lam_cpc_vars,
@@ -62,12 +63,12 @@ for i in range(T - N):
     mpc.set_bid_uncertainty(alpha)
 
     # 4. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
-    cpc_inv = mpc.draw_cpc_inv(alpha, beta)
+    cpc_inv = mpc.draw_cpc_inv(alpha, beta, n_samples)
 
     # 5. Linearization of cost using weighted Bayesian regression using last 10 obs
-    cost_params = mpc.cost_linearization(
-        past_costs,
-        weights
+    cost_params = mpc.dummy_cost_linearization(
+        past_bids,
+        past_costs
     )
 
     # outputs a^omega, b^omega for omega=1,...,n_omega. (for each adslot of course)
@@ -78,9 +79,9 @@ for i in range(T - N):
     A = np.eye(2)
 
     # Contruct B from gradients of x=[clicks, cost] w.r.t. input
-    #grad_cost = a # 
-    #grad_clicks = cpc_inv * a
-    #B = np.array([grad_clicks, grad_cost]) # maybe this is just a B^omega
+    grad_cost = a
+    grad_clicks = cpc_inv * np.outer(a, np.ones(n_samples))
+    B = np.array([grad_clicks, grad_cost]) # maybe this is just a B^omega
 
     # Calculate matrix
 

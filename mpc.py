@@ -281,15 +281,19 @@ class MPC():
 
     def draw_cpc_inv(
             self,
-            alpha,
-            beta
+            alpha: np.ndarray,
+            beta: np.ndarray,
+            sample_size: int
     ) -> float:
 
-        cpc_inv = np.random.gamma(
-            shape=alpha,
-            scale=beta,
-            size=self.n_slots
-        )
+        cpc_inv = np.zeros((self.n_slots, sample_size))
+
+        for i in range(self.n_slots):
+            cpc_inv[i,:] = np.random.gamma(
+                shape=alpha[i],
+                scale=beta[i],
+                size=sample_size
+            )
 
         return cpc_inv
 
@@ -352,14 +356,14 @@ class MPC():
         a_params = []
         b_params = []
 
-        for i in range(len(costs)):
+        for i in range(self.n_slots):
             a, b, r_value, p_value, std_err = stats.linregress(bids[i, :], costs[i, :])
 
             a_params.append(a)
             b_params.append(b)
 
         # Collect parameters in dict
-        cost_params = {"a": a_params, "b": b_params}
+        cost_params = {"a": np.array(a_params), "b": b_params}
 
         return cost_params
 

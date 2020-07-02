@@ -74,7 +74,7 @@ bid_uncertainty_initial = 0.5*np.ones(n_slots) # 50% Heisenberg randomization
 
 # Define cost-per-click parameters
 lam_cpc_vars = 0.9  # forgetting factor related to CPC var update
-
+n_sample = 50
 # gamma (CPC) distribution parameters
 alpha = 1
 beta = 1
