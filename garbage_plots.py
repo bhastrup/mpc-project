@@ -10,5 +10,9 @@ for i in range(0,200):
 plt.plot(ctrs[:,])
 plt.show()
 
-
 np.mean(ctrs[:,])
+
+
+########
+
+plt.plot(past_bids[0,:], past_costs[0,:],'*')
