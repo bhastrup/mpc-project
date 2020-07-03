@@ -91,5 +91,13 @@ past_bids = np.zeros((n_slots, n_days_cost))
 
 # Campaign budget
 budget = 1000
-y_target = np.linspace(0,T,T+1)
+y_target = np.linspace(0,budget,T+1)
 
+
+# Build unit matrix for broadcasting of b
+I_intercept = np.zeros((n_slots, N)) # dim = n_slots x N
+
+# Build upper triangular matrix of ones
+I_upper = np.zeros((N,N))
+upper_triangle_indices = np.triu_indices(N)
+I_upper[upper_triangle_indices] = 1 # dim = N x N
