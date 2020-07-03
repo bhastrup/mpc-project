@@ -302,7 +302,8 @@ class MPC():
             costs: np.ndarray,
             bids: np.ndarray,
             weights: np.ndarray,
-            n_days_cost: int
+            n_days_cost: int,
+            n_samples: int
     ) -> Dict:
 
         a_params = []
@@ -326,7 +327,11 @@ class MPC():
             model = StanModel_cache(model_file=stanfile)
 
             # run Stan model
-            fit = model.sampling(data=stan_data, chains=4, iter=1000)
+            fit = model.sampling(
+                data=stan_data,
+                chains=2,
+                iter=n_samples*40,
+            )
 
             # Obbtain parameter estimates
             params = fit.extract()

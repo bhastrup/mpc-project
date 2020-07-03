@@ -8,7 +8,7 @@ t = np.linspace(0., T, n)  # vector of times.
 
 # Define general ad parameters
 n_slots = 10  # number of ad slots
-cov = 0.75 # Covariance between b_star and ctr
+cov = 0.75  # Covariance between b_star and ctr
 
 # Define click-through-rate parameters
 ctr_mu = 0.01  # mean ctr value.
@@ -82,7 +82,7 @@ beta = 1
 # Define weight array for cost linearization
 n_days_cost = 14
 decaying_rate = 0.9
-weights = [decaying_rate ** i for i in range(n_days_cost    )]
+weights = [decaying_rate ** i for i in range(n_days_cost)]
 
 # Initialze historic bids and costs for cost_linearization
 past_costs = np.zeros((n_slots, n_days_cost))
@@ -91,13 +91,17 @@ past_bids = np.zeros((n_slots, n_days_cost))
 
 # Campaign budget
 budget = 1000
-y_target = np.linspace(0,budget,T+1)
+y_target = np.linspace(0, budget, T+1)
 
 
 # Build unit matrix for broadcasting of b
-I_intercept = np.zeros((n_slots, N)) # dim = n_slots x N
+I_intercept = np.ones((n_slots, N))  # dim = n_slots x N
 
 # Build upper triangular matrix of ones
-I_upper = np.zeros((N,N))
+I_upper = np.zeros((N, N))
 upper_triangle_indices = np.triu_indices(N)
-I_upper[upper_triangle_indices] = 1 # dim = N x N
+I_upper[upper_triangle_indices] = 1  # dim = N x N
+
+# Define Q matrix
+q_vec = np.linspace(1, 3, 14) / np.sum(np.linspace(1, 3, 14))
+Q_mat = np.diag(q_vec)

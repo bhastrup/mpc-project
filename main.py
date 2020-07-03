@@ -2,10 +2,8 @@ import numpy as np
 from params import *
 from mpc import MPC
 
+from cvxpy_diagonalizing import *
 import cvxpy as cp
-from cvxpy.atoms.affine.affine_atom import AffAtom
-from cvxpy.atoms.affine.vec import vec
-import cvxpy.lin_ops.lin_utils as lu
 
 # construct MPC class
 mpc = MPC(
@@ -75,22 +73,32 @@ for k in range(T - N):
         costs=past_costs,
         bids=past_bids,
         weights=weights,
-        n_days_cost=n_days_cost
+        n_days_cost=n_days_cost,
+        n_samples=n_samples
     )
 
     # Extract slope and intercept, both dim = n_samples x n_slots
-    A_mat = np.array(cost_params["a"]) # cost slopes, a^omega
-    b = np.array(cost_params["b"]) # cost intercepts, b^omega
+
+    # cost slopes, a^omega
+    A_mat_all = np.array(cost_params["a"])
+    A_mat = np.transpose(A_mat_all[:, :n_samples])
+
+    # cost intercepts, b^omega
+    b_all = np.array(cost_params["b"])
+    b = np.transpose(b_all[:, :n_samples])
 
     # Construct A (trivial)
     A = np.eye(2)
 
     # Calculate reference trajectory
-    y_ref = np.linspace(mpc.cost, y_target[k+N], N+1)[1:] # dim = N
-    y_ref = np.outer(np.ones(n_samples), y_ref) # dim = n_samples x N
+    y_ref = np.linspace(mpc.cost, y_target[k+N], N+1)[1:]  # dim = N
+    y_ref = np.outer(np.ones(n_samples), y_ref)  # dim = n_samples x N
 
     # Initialize MPC optimizer
-    U = cp.Variable(mpc.n_slots, N)
+    U = cp.Variable((mpc.n_slots, N))
+    dev = (((A_mat @ U) + (b @ I_intercept)) @ I_upper) - y_ref
+    ssd = diag_mat(dev.T @ dev).T
+    obj_var = ssd.T @ (Q_mat @ ssd)
 
     objective = cp.Minimize(cp.sum_squares(A*x - b))
     obj_var = np.matmul(np.matmul(A_mat, U) + np.matmul(b, I_intercept), I_upper)-y_ref
