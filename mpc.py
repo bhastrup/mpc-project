@@ -32,6 +32,7 @@ class MPC():
         self.cov = cov
         self.bid_price = bid_price_initial
         self.bid_uncertainty = bid_uncertainty_initial
+        self.eps = 0.0000001
 
     def wiener_process(
             self,
@@ -166,12 +167,10 @@ class MPC():
         :return nb_samples: the obtained samples
         """
 
-        eps = 0.0000001
-
         nb_samples = np.random.poisson(
             np.random.gamma(
                 shape=dispersion,
-                scale=mu / (dispersion + eps)
+                scale=mu / (dispersion + self.eps)
             )
         )
 
@@ -196,7 +195,7 @@ class MPC():
             randomized_bids.append(
                 np.random.gamma(
                     shape=1/bid_uncertainty[i]**2,
-                    scale=bid_price[i]*bid_uncertainty[i]**2,
+                    scale=bid_price[i]*bid_uncertainty[i]**2 + self.eps,
                     size=ad_opportunities[i]
                 ).tolist()
             )

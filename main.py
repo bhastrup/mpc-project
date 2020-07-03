@@ -36,6 +36,7 @@ for i in range(1000):
 
 
 # Run the simulation
+T = 30
 for k in range(T - N):
 
     # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b*
@@ -104,35 +105,28 @@ for k in range(T - N):
             ((((A_mat @ U) + (b @ I_intercept)) @ I_upper) - y_ref) * day_mat[:, n]
         )
 
-    sum_dev_list = sum(dev_list[i] for i in range(N-1))
+    sum_dev_list = sum(q_vec[i] * dev_list[i] for i in range(N-1))
 
     objective = cp.Minimize(
         cp.sum_squares(sum_dev_list)
     )
 
     # Set constraints
-    constraints = [0.01 <= U, U <= 1]
+    constraints = [0.0001 <= U, U <= 1]
 
     # Construct the problem
     prob = cp.Problem(objective, constraints)
 
     # The optimal objective value is returned by `prob.solve()`.
-    result = prob.solve(max_iter=20000)
+    result = prob.solve(max_iter=50000)
 
     # The optimal value for U is stored in `U.value`.
-    print(U.value)
-
-
-    objective = cp.Minimize(cp.sum_squares(A*x - b))
 
     # Contruct B from gradients of x=[clicks, cost] w.r.t. input
     grad_cost = a
     grad_clicks = cpc_inv * np.outer(a, np.ones(n_samples))
     B = np.array([grad_clicks, grad_cost]) # maybe this is just a B^omega
 
-    # Calculate matrix
-
-    # Solve convex optimization problem using CVXPY
 
     # Update nominal bid
-    mpc.set_bid_price(u[:, 0])
+    mpc.set_bid_price(U.value[:, 0])

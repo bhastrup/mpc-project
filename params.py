@@ -7,7 +7,7 @@ n = 1000  # number of time steps.
 t = np.linspace(0., T, n)  # vector of times.
 
 # Define general ad parameters
-n_slots = 10  # number of ad slots
+n_slots = 3  # number of ad slots
 cov = 0.75  # Covariance between b_star and ctr
 
 # Define click-through-rate parameters
@@ -32,8 +32,8 @@ ctr_params = {
 # Define parameters related to opportunities
 ad_opportunities_mu = 10000
 ad_opportunities_rate_initial = np.repeat(ad_opportunities_mu, n_slots)
-ad_opportunities_lambda = 0.1
-ad_opportunities_delta = 0.1
+ad_opportunities_lambda = 0.0001
+ad_opportunities_delta = 2
 ad_opportunities_p = 0.5
 ad_opportunities_ub = 5 * ad_opportunities_mu
 ad_opportunities_lb = 0.5 * ad_opportunities_mu
