@@ -90,7 +90,7 @@ past_bids = np.zeros((n_slots, n_days_cost))
 
 
 # Campaign budget
-budget = 1000
+budget = 10000
 y_target = np.linspace(0, budget, T+1)
 
 
@@ -103,5 +103,10 @@ upper_triangle_indices = np.triu_indices(N)
 I_upper[upper_triangle_indices] = 1  # dim = N x N
 
 # Define Q matrix
-q_vec = np.linspace(1, 3, 14) / np.sum(np.linspace(1, 3, 14))
+q_vec = np.linspace(1, 3, N) / np.sum(np.linspace(1, 3, N))
 Q_mat = np.diag(q_vec)
+
+# Initialization for the MPC optimization
+day_mat = np.zeros((N, N))
+np.fill_diagonal(day_mat, 1)
+

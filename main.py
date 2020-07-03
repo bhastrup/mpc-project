@@ -21,7 +21,7 @@ mpc = MPC(
 )
 
 # 0. Initialize campaign without MPC informed bidding
-for i in range(100):
+for i in range(1000):
 
     ad_data = mpc.simulate_data()
     cost = ad_data["cost"]
@@ -95,13 +95,35 @@ for k in range(T - N):
     y_ref = np.outer(np.ones(n_samples), y_ref)  # dim = n_samples x N
 
     # Initialize MPC optimizer
-    U = cp.Variable((mpc.n_slots, N))
-    dev = (((A_mat @ U) + (b @ I_intercept)) @ I_upper) - y_ref
-    ssd = diag_mat(dev.T @ dev).T
-    obj_var = ssd.T @ (Q_mat @ ssd)
+    U = cp.Variable((mpc.n_slots, N), nonneg=True)
+
+    dev_list = []
+
+    for n in range(N):
+        dev_list.append(
+            ((((A_mat @ U) + (b @ I_intercept)) @ I_upper) - y_ref) * day_mat[:, n]
+        )
+
+    sum_dev_list = sum(dev_list[i] for i in range(N-1))
+
+    objective = cp.Minimize(
+        cp.sum_squares(sum_dev_list)
+    )
+
+    # Set constraints
+    constraints = [0.01 <= U, U <= 1]
+
+    # Construct the problem
+    prob = cp.Problem(objective, constraints)
+
+    # The optimal objective value is returned by `prob.solve()`.
+    result = prob.solve(max_iter=20000)
+
+    # The optimal value for U is stored in `U.value`.
+    print(U.value)
+
 
     objective = cp.Minimize(cp.sum_squares(A*x - b))
-    obj_var = np.matmul(np.matmul(A_mat, U) + np.matmul(b, I_intercept), I_upper)-y_ref
 
     # Contruct B from gradients of x=[clicks, cost] w.r.t. input
     grad_cost = a
