@@ -1,6 +1,11 @@
 import numpy as np
-from mpc import MPC
 from params import *
+from mpc import MPC
+
+import cvxpy as cp
+from cvxpy.atoms.affine.affine_atom import AffAtom
+from cvxpy.atoms.affine.vec import vec
+import cvxpy.lin_ops.lin_utils as lu
 
 # construct MPC class
 mpc = MPC(
@@ -33,7 +38,7 @@ for i in range(100):
 
 
 # Run the simulation
-for i in range(T - N):
+for k in range(T - N):
 
     # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b*
     mpc.update_market()
@@ -80,19 +85,15 @@ for i in range(T - N):
     # Construct A (trivial)
     A = np.eye(2)
 
-    # Build unit matrix for broadcasting of b
-    I_intercept = np.zeros((mpc.n_slots, N))
-
-    # Build upper triangular matrix of ones
-    I_upper = np.zeros((N,N))
-    upper_triangle_indices = np.triu_indices(N)
-    I_upper[upper_triangle_indices] = 1
-
     # Calculate reference trajectory
-    y_ref = np.linspace(mpc.cost, y_target[i+N], N+1)[1:]
-    y_ref = np.outer(np.ones(n_samples), y_ref)
+    y_ref = np.linspace(mpc.cost, y_target[k+N], N+1)[1:] # dim = N
+    y_ref = np.outer(np.ones(n_samples), y_ref) # dim = n_samples x N
 
+    # Initialize MPC optimizer
+    U = cp.Variable(mpc.n_slots, N)
 
+    objective = cp.Minimize(cp.sum_squares(A*x - b))
+    obj_var = np.matmul(np.matmul(A_mat, U) + np.matmul(b, I_intercept), I_upper)-y_ref
 
     # Contruct B from gradients of x=[clicks, cost] w.r.t. input
     grad_cost = a
