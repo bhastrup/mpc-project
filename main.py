@@ -2,10 +2,8 @@ import numpy as np
 from params import *
 from mpc import MPC
 
+from cvxpy_diagonalizing import *
 import cvxpy as cp
-from cvxpy.atoms.affine.affine_atom import AffAtom
-from cvxpy.atoms.affine.vec import vec
-import cvxpy.lin_ops.lin_utils as lu
 
 # construct MPC class
 mpc = MPC(
@@ -23,7 +21,7 @@ mpc = MPC(
 )
 
 # 0. Initialize campaign without MPC informed bidding
-for i in range(100):
+for i in range(1000):
 
     ad_data = mpc.simulate_data()
     cost = ad_data["cost"]
@@ -38,6 +36,7 @@ for i in range(100):
 
 
 # Run the simulation
+T = 30
 for k in range(T - N):
 
     # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b*
@@ -75,34 +74,59 @@ for k in range(T - N):
         costs=past_costs,
         bids=past_bids,
         weights=weights,
-        n_days_cost=n_days_cost
+        n_days_cost=n_days_cost,
+        n_samples=n_samples
     )
 
     # Extract slope and intercept, both dim = n_samples x n_slots
-    A_mat = np.array(cost_params["a"]) # cost slopes, a^omega
-    b = np.array(cost_params["b"]) # cost intercepts, b^omega
+
+    # cost slopes, a^omega
+    A_mat_all = np.array(cost_params["a"])
+    A_mat = np.transpose(A_mat_all[:, :n_samples])
+
+    # cost intercepts, b^omega
+    b_all = np.array(cost_params["b"])
+    b = np.transpose(b_all[:, :n_samples])
 
     # Construct A (trivial)
     A = np.eye(2)
 
     # Calculate reference trajectory
-    y_ref = np.linspace(mpc.cost, y_target[k+N], N+1)[1:] # dim = N
-    y_ref = np.outer(np.ones(n_samples), y_ref) # dim = n_samples x N
+    y_ref = np.linspace(mpc.cost, y_target[k+N], N+1)[1:]  # dim = N
+    y_ref = np.outer(np.ones(n_samples), y_ref)  # dim = n_samples x N
 
     # Initialize MPC optimizer
-    U = cp.Variable(mpc.n_slots, N)
+    U = cp.Variable((mpc.n_slots, N), nonneg=True)
 
-    objective = cp.Minimize(cp.sum_squares(A*x - b))
-    obj_var = np.matmul(np.matmul(A_mat, U) + np.matmul(b, I_intercept), I_upper)-y_ref
+    dev_list = []
+
+    for n in range(N):
+        dev_list.append(
+            ((((A_mat @ U) + (b @ I_intercept)) @ I_upper) - y_ref) * day_mat[:, n]
+        )
+
+    sum_dev_list = sum(q_vec[i] * dev_list[i] for i in range(N-1))
+
+    objective = cp.Minimize(
+        cp.sum_squares(sum_dev_list)
+    )
+
+    # Set constraints
+    constraints = [0.0001 <= U, U <= 1]
+
+    # Construct the problem
+    prob = cp.Problem(objective, constraints)
+
+    # The optimal objective value is returned by `prob.solve()`.
+    result = prob.solve(max_iter=50000)
+
+    # The optimal value for U is stored in `U.value`.
 
     # Contruct B from gradients of x=[clicks, cost] w.r.t. input
     grad_cost = a
     grad_clicks = cpc_inv * np.outer(a, np.ones(n_samples))
     B = np.array([grad_clicks, grad_cost]) # maybe this is just a B^omega
 
-    # Calculate matrix
-
-    # Solve convex optimization problem using CVXPY
 
     # Update nominal bid
-    mpc.set_bid_price(u[:, 0])
+    mpc.set_bid_price(U.value[:, 0])

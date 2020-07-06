@@ -32,6 +32,7 @@ class MPC():
         self.cov = cov
         self.bid_price = bid_price_initial
         self.bid_uncertainty = bid_uncertainty_initial
+        self.eps = 0.0000001
 
     def wiener_process(
             self,
@@ -166,12 +167,10 @@ class MPC():
         :return nb_samples: the obtained samples
         """
 
-        eps = 0.0000001
-
         nb_samples = np.random.poisson(
             np.random.gamma(
                 shape=dispersion,
-                scale=mu / (dispersion + eps)
+                scale=mu / (dispersion + self.eps)
             )
         )
 
@@ -196,7 +195,7 @@ class MPC():
             randomized_bids.append(
                 np.random.gamma(
                     shape=1/bid_uncertainty[i]**2,
-                    scale=bid_price[i]*bid_uncertainty[i]**2,
+                    scale=bid_price[i]*bid_uncertainty[i]**2 + self.eps,
                     size=ad_opportunities[i]
                 ).tolist()
             )
@@ -302,7 +301,8 @@ class MPC():
             costs: np.ndarray,
             bids: np.ndarray,
             weights: np.ndarray,
-            n_days_cost: int
+            n_days_cost: int,
+            n_samples: int
     ) -> Dict:
 
         a_params = []
@@ -326,7 +326,11 @@ class MPC():
             model = StanModel_cache(model_file=stanfile)
 
             # run Stan model
-            fit = model.sampling(data=stan_data, chains=4, iter=1000)
+            fit = model.sampling(
+                data=stan_data,
+                chains=2,
+                iter=n_samples*40,
+            )
 
             # Obbtain parameter estimates
             params = fit.extract()
