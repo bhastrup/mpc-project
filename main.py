@@ -50,6 +50,8 @@ for k in range(T - N):
     imps = ad_data["imps"]
     clicks = ad_data["clicks"]
 
+    # TODO: Record cost and click data
+
     past_costs = mpc.update_history(past_costs, cost)
     past_bids = mpc.update_history(past_bids, mpc.bid_price)
 
@@ -98,6 +100,7 @@ for k in range(T - N):
 
     # Initialize MPC optimizer
     U = cp.Variable((mpc.n_slots, N))
+    # U = np.zeros((n_slots, N))
 
     cost_daily = A_mat @ U + b @ I_intercept  # dim = n_samples x N
 
@@ -119,15 +122,22 @@ for k in range(T - N):
     # Solve MPC problem
     objective = cp.Minimize(
         - alpha_mv / n_samples * cp.sum(click_daily)
-        + (1-alpha_mv) * cp.sum_squares(dev_mat @ Q_mat)
+        + (1-alpha_mv) * cp.sum_squares(dev_mat @ Q_mat) / n_samples
     )
+
+    # for testing magnitude of mean and variance objectives
+    # term1 = - alpha_mv / n_samples * sum(click_daily)
+    # term2 = (1-alpha_mv) * np.sum((dev_mat @ Q_mat)**2) / n_samples
 
     # Set constraints
     u_star = cost_params['u_star']
     u_lower_bound = np.outer(u_star, np.ones(N))
     u_upper_bounder = 2 * u_lower_bound
 
-    constraints = [-u_lower_bound <= U, U <= u_upper_bounder]
+    constraints = [
+        -u_lower_bound + 10**-4 <= U,
+        U <= u_upper_bounder
+    ]
 
     # Construct the problem
     prob = cp.Problem(objective, constraints)
@@ -138,11 +148,8 @@ for k in range(T - N):
     # The optimal value for U is stored in `U.value`.
     print(U.value)
 
-    # Contruct B from gradients of x=[clicks, cost] w.r.t. input
-    grad_cost = a
-    grad_clicks = cpc_inv * np.outer(a, np.ones(n_samples))
-    B = np.array([grad_clicks, grad_cost]) # maybe this is just a B^omega
-
+    # Calculate new bid
+    new_bid = U.value[:, 0] + u_star
 
     # Update nominal bid
-    mpc.set_bid_price(U.value[:, 0])
+    mpc.set_bid_price(new_bid)
