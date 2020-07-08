@@ -191,6 +191,8 @@ class MPC:
         randomized_bids = []
 
         for i in range(self.n_slots):
+            print("bid_price: ", bid_price[i])
+            print("bid_unc ", bid_uncertainty[i] ** 2)
             randomized_bids.append(
                 np.random.gamma(
                     shape=1 / bid_uncertainty[i] ** 2,
@@ -391,7 +393,7 @@ class MPC:
 
         return None
 
-    def set_bid_uncertainty(self, alpha: float) -> None:
+    def set_bid_uncertainty(self, alpha: np.ndarray) -> None:
         """
         Updates the bid price uncertainty, according to Karlsson page 32, equation (28)
         param alpha: defined in Karlsson page 30, equation (24)
