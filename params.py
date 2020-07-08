@@ -107,6 +107,8 @@ q_vec = np.linspace(1, 3, N) / np.sum(np.linspace(1, 3, N))
 Q_mat = np.diag(q_vec)
 
 # Initialization for the MPC optimization
-day_mat = np.zeros((N, N))
-np.fill_diagonal(day_mat, 1)
+day_mat = np.eye(N)
+
+# Mean variance constant
+alpha_mv = 0.99
 
