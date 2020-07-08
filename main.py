@@ -37,6 +37,7 @@ for i in range(1000):
 
 # Run the simulation
 T = 30
+k = 0
 for k in range(T - N):
 
     # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b*
@@ -67,7 +68,7 @@ for k in range(T - N):
     mpc.set_bid_uncertainty(alpha)
 
     # 4. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
-    cpc_inv = mpc.draw_cpc_inv(alpha, beta, n_samples)
+    cpc_inv = np.transpose(mpc.draw_cpc_inv(alpha, beta, n_samples))
 
     # 5. Linearization of cost using weighted Bayesian regression using last 10 obs
     cost_params = mpc.cost_linearization(
@@ -96,23 +97,37 @@ for k in range(T - N):
     y_ref = np.outer(np.ones(n_samples), y_ref)  # dim = n_samples x N
 
     # Initialize MPC optimizer
-    U = cp.Variable((mpc.n_slots, N), nonneg=True)
+    U = cp.Variable((mpc.n_slots, N))
 
+    cost_daily = A_mat @ U + b @ I_intercept  # dim = n_samples x N
+
+    # Construct mean objective
+    click_daily = (cpc_inv * A_mat) @ U + (cpc_inv * b) @ I_intercept
+
+
+    # Construct variance objective
     dev_list = []
+    dev_mat = (cost_daily @ I_upper) - y_ref
 
     for n in range(N):
         dev_list.append(
-            ((((A_mat @ U) + (b @ I_intercept)) @ I_upper) - y_ref) * day_mat[:, n]
+            dev_mat[:, n]
         )
 
     sum_dev_list = sum(q_vec[i] * dev_list[i] for i in range(N-1))
 
+    # Solve MPC problem
     objective = cp.Minimize(
-        cp.sum_squares(sum_dev_list)
+        - alpha_mv / n_samples * cp.sum(click_daily)
+        + (1-alpha_mv) * cp.sum_squares(dev_mat @ Q_mat)
     )
 
     # Set constraints
-    constraints = [0.0001 <= U, U <= 1]
+    u_star = cost_params['u_star']
+    u_lower_bound = np.outer(u_star, np.ones(N))
+    u_upper_bounder = 2 * u_lower_bound
+
+    constraints = [-u_lower_bound <= U, U <= u_upper_bounder]
 
     # Construct the problem
     prob = cp.Problem(objective, constraints)
@@ -121,6 +136,7 @@ for k in range(T - N):
     result = prob.solve(max_iter=50000)
 
     # The optimal value for U is stored in `U.value`.
+    print(U.value)
 
     # Contruct B from gradients of x=[clicks, cost] w.r.t. input
     grad_cost = a

@@ -5,7 +5,8 @@ from misc import StanModel_cache
 
 from typing import Dict, List
 
-class MPC():
+
+class MPC:
     def __init__(
             self,
             ctr_mu: float,
@@ -76,24 +77,23 @@ class MPC():
         dim_x = len(x_old)
 
         # Compute drift term
-        drift_term = - lamba*(x_old - mu)
+        drift_term = - lamba * (x_old - mu)
 
         # Compute diffusion term
-        diffusion_term = delta*(x_old**p)*dw
+        diffusion_term = delta * (x_old ** p) * dw
 
         # Update the random walk
         updated_random_walk = x_old + drift_term + diffusion_term
-        
+
         # Reflect output in lower bound
         lb_diff = updated_random_walk - lower_bound
-        updated_random_walk[lb_diff < 0] = updated_random_walk[lb_diff < 0] - 2*lb_diff[lb_diff < 0]
+        updated_random_walk[lb_diff < 0] = updated_random_walk[lb_diff < 0] - 2 * lb_diff[lb_diff < 0]
 
         ub_diff = updated_random_walk - upper_bound
-        updated_random_walk[ub_diff > 0] = updated_random_walk[ub_diff > 0] - 2*ub_diff[ub_diff > 0]
-        
+        updated_random_walk[ub_diff > 0] = updated_random_walk[ub_diff > 0] - 2 * ub_diff[ub_diff > 0]
+
         # https://benjaminmoll.com/wp-content/uploads/2019/07/Lecture4_2149.pdf
         return updated_random_walk
-
 
     def update_market(self) -> None:
         """
@@ -110,13 +110,13 @@ class MPC():
             self.ad_opportunities_params["lower_bound"],
             np.random.randn(self.n_slots)
         )
-        #print("ad_opportunities_rate")
-        #print(self.ad_opportunities_rate)
+        # print("ad_opportunities_rate")
+        # print(self.ad_opportunities_rate)
         # Specify correlation between ctr and b_star
         mean = np.zeros(2)
         cov_matrix = np.array(
             [[1, self.cov],
-            [self.cov, 1]]
+             [self.cov, 1]]
         )
         # Draw correlated Wiener realization
         dw = np.random.multivariate_normal(
@@ -135,8 +135,8 @@ class MPC():
             self.b_star_params["lower_bound"],
             dw[:, 0]
         )
-        #print("b_star")
-        #print(self.b_star)
+        # print("b_star")
+        # print(self.b_star)
         # Update CTR of each adslot
         self.ctr = self.sde_walk(
             self.ctr,
@@ -148,8 +148,8 @@ class MPC():
             self.ctr_params["lower_bound"],
             dw[:, 1]
         )
-        #print("ctr")
-        #print(self.ctr)
+        # print("ctr")
+        # print(self.ctr)
 
         return None
 
@@ -176,7 +176,6 @@ class MPC():
 
         return nb_samples
 
-
     def heisenberg_bidding(
             self,
             bid_price: np.ndarray,
@@ -194,8 +193,8 @@ class MPC():
         for i in range(self.n_slots):
             randomized_bids.append(
                 np.random.gamma(
-                    shape=1/bid_uncertainty[i]**2,
-                    scale=bid_price[i]*bid_uncertainty[i]**2 + self.eps,
+                    shape=1 / bid_uncertainty[i] ** 2,
+                    scale=bid_price[i] * bid_uncertainty[i] ** 2 + self.eps,
                     size=ad_opportunities[i]
                 ).tolist()
             )
@@ -210,7 +209,7 @@ class MPC():
         # Draw number of ad opportunities from neg_binom distribution with mean given by mean-reverting sde
         ad_opportunities = self.nb_samples(
             mu=self.ad_opportunities_rate,
-            dispersion=self.ad_opportunities_params["phi"]*self.ad_opportunities_rate
+            dispersion=self.ad_opportunities_params["phi"] * self.ad_opportunities_rate
         )
 
         # Heisenberg bidding, Karlsson page 26
@@ -227,17 +226,17 @@ class MPC():
             [np.sum(np.asarray(realized_bid[i]) > self.b_star[i]) for i in range(self.n_slots)]
         )
 
-        #print("imps")
-        #print(imps)
+        # print("imps")
+        # print(imps)
         # Calculate cost
         cost = imps * self.b_star
-        #print("cost")
-        #print(cost)
+        # print("cost")
+        # print(cost)
         # Simulate clicks
         mu_clicks = imps * self.ctr
         disp_clicks = 1.0 * mu_clicks
-        #print("disp_clicks")
-        #print(disp_clicks)
+        # print("disp_clicks")
+        # print(disp_clicks)
 
         clicks = self.nb_samples(
             mu=mu_clicks,
@@ -268,8 +267,8 @@ class MPC():
         :return cpc_variables: clicks and cost collected
         """
 
-        alpha = lam_cpc_vars*alpha_old + clicks
-        beta = lam_cpc_vars*beta_old + cost
+        alpha = lam_cpc_vars * alpha_old + clicks
+        beta = lam_cpc_vars * beta_old + cost
 
         cpc_variables = {
             "alpha": alpha,
@@ -288,9 +287,9 @@ class MPC():
         cpc_inv = np.zeros((self.n_slots, sample_size))
 
         for i in range(self.n_slots):
-            cpc_inv[i,:] = np.random.gamma(
+            cpc_inv[i, :] = np.random.gamma(
                 shape=alpha[i],
-                scale=beta[i],
+                scale=1 / beta[i],
                 size=sample_size
             )
 
@@ -308,11 +307,14 @@ class MPC():
         a_params = []
         b_params = []
 
+        u_star = []
+
         # define Stan file path
         stanfile = 'stanfiles/cost_linearization.stan'
 
         for slots_i in range(self.n_slots):
             u_tilde = bids[slots_i, :] - np.mean(bids[slots_i, :])
+            u_star.append(np.mean(bids[slots_i, :]))
 
             # create dict for Stan
             stan_data = {
@@ -329,7 +331,7 @@ class MPC():
             fit = model.sampling(
                 data=stan_data,
                 chains=2,
-                iter=n_samples*40,
+                iter=n_samples * 40,
             )
 
             # Obbtain parameter estimates
@@ -341,7 +343,11 @@ class MPC():
             b_params.append(b)
 
         # Collect parameters in dict
-        cost_params = {"a": a_params, "b": b_params}
+        cost_params = {
+            "a": a_params,
+            "b": b_params,
+            "u_star": u_star
+        }
 
         return cost_params
 
@@ -373,7 +379,6 @@ class MPC():
 
         return cost_params
 
-
     def set_bid_price(self, u: np.ndarray) -> None:
         """
         Updates the bid price that was calculated using Model Predictive Control
@@ -383,9 +388,8 @@ class MPC():
         self.bid_price = u
 
         # TODO: Define some constraints that prevents setting a dangerously high bid
-        
-        return None
 
+        return None
 
     def set_bid_uncertainty(self, alpha: float) -> None:
         """
@@ -393,10 +397,9 @@ class MPC():
         param alpha: defined in Karlsson page 30, equation (24)
         """
 
-        self.bid_uncertainty = alpha**(-1/2)
-        
-        return None
+        self.bid_uncertainty = alpha ** (-1 / 2)
 
+        return None
 
     def update_history(self, old_array: np.ndarray, x: np.ndarray) -> np.ndarray:
         """

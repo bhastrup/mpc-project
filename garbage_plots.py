@@ -1,4 +1,3 @@
-
 import matplotlib.pyplot as plt
 
 plt.figure(figsize=(16,16))
@@ -15,4 +14,4 @@ np.mean(ctrs[:,])
 
 ########
 
-plt.plot(past_bids[0,:], past_costs[0,:],'*')
+plt.plot(past_bids[0, :], past_costs[0, :],'*')
