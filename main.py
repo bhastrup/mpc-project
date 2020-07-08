@@ -68,7 +68,7 @@ for k in range(T - N):
     mpc.set_bid_uncertainty(alpha)
 
     # 4. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
-    cpc_inv = mpc.draw_cpc_inv(alpha, beta, n_samples)
+    cpc_inv = np.transpose(mpc.draw_cpc_inv(alpha, beta, n_samples))
 
     # 5. Linearization of cost using weighted Bayesian regression using last 10 obs
     cost_params = mpc.cost_linearization(
@@ -99,18 +99,27 @@ for k in range(T - N):
     # Initialize MPC optimizer
     U = cp.Variable((mpc.n_slots, N))
 
+    cost_daily = A_mat @ U + b @ I_intercept  # dim = n_samples x N
+
+    # Construct mean objective
+    click_daily = (cpc_inv * A_mat) @ U + (cpc_inv * b) @ I_intercept
+
+
+    # Construct variance objective
     dev_list = []
-    dev_mat = (((A_mat @ U) + (b @ I_intercept)) @ I_upper) - y_ref
+    dev_mat = (cost_daily @ I_upper) - y_ref
 
     for n in range(N):
         dev_list.append(
-            ((((A_mat @ U) + (b @ I_intercept)) @ I_upper) - y_ref) * day_mat[:, n]
+            dev_mat[:, n]
         )
 
     sum_dev_list = sum(q_vec[i] * dev_list[i] for i in range(N-1))
 
+    # Solve MPC problem
     objective = cp.Minimize(
-        cp.sum_squares(dev_mat * Q_mat)
+        - alpha_mv / n_samples * cp.sum(click_daily)
+        + (1-alpha_mv) * cp.sum_squares(dev_mat @ Q_mat)
     )
 
     # Set constraints
