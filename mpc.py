@@ -71,6 +71,8 @@ class MPC:
         :param p: x exponent
         :param upper_bound: reflection boundary
         :param lower_bound: reflection boundary
+        :param dw: increment
+        :return updated_random_walk: the random walk
         """
 
         # Obtain dimensions of x
@@ -98,6 +100,7 @@ class MPC:
     def update_market(self) -> None:
         """
         Evolves the underlying market parameters.
+        :return market_params: b_star and ctr values
         """
         # Update expected number of impression opportunities for each adslot
         self.ad_opportunities_rate = self.sde_walk(
@@ -187,8 +190,10 @@ class MPC:
     ) -> List:
         """
         Randomizes bids to smoothen plant gain related to impressions won vs bid price
-        param: bid_price: nominal bid price
-        param: bid_uncertainty: bid price uncertainty
+        :param bid_price: nominal bid price
+        :param bid_uncertainty: bid price uncertainty
+        :param ad_opportunities: ad opportunities
+        :return randomized_bids: randomized according to heisenberg bidding
         """
 
         randomized_bids = []
@@ -207,6 +212,7 @@ class MPC:
     def simulate_data(self) -> Dict:  # Tuple(np.ndarray, np.ndarray, np.ndarray)
         """
         Observe cost, impressions and click from the auction and ad serving.
+        :return ad_data: cost, imps and clicks
         """
 
         # Draw number of ad opportunities from neg_binom distribution with mean given by mean-reverting sde
@@ -306,10 +312,20 @@ class MPC:
             self,
             costs: np.ndarray,
             bids: np.ndarray,
-            weights: np.ndarray,
+            weights: List,
             n_days_cost: int,
             n_samples: int
     ) -> Dict:
+        """
+        Find expression for cost as linear function of u:
+        dCost/du=a, if cost is given by Cost=a*u+b.
+        :param costs: array of last 14 days cost
+        :param bids: array of last 14 days bids
+        :param weights: list for weighting data points
+        :param n_days_cost: days used
+        :param n_samples: number of samples used
+        :return cost_params: a, b and u_star parameters
+        """
 
         a_params = []
         b_params = []
