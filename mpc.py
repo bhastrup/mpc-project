@@ -148,10 +148,13 @@ class MPC:
             self.ctr_params["lower_bound"],
             dw[:, 1]
         )
-        # print("ctr")
-        # print(self.ctr)
 
-        return None
+        markets_params = {
+            'b_star': self.b_star,
+            'ctr': self.ctr
+        }
+
+        return markets_params
 
     def nb_samples(
             self,
@@ -191,8 +194,6 @@ class MPC:
         randomized_bids = []
 
         for i in range(self.n_slots):
-            print("bid_price: ", bid_price[i])
-            print("bid_unc ", bid_uncertainty[i] ** 2)
             randomized_bids.append(
                 np.random.gamma(
                     shape=1 / bid_uncertainty[i] ** 2,
@@ -222,10 +223,14 @@ class MPC:
         )
 
         # No need to draw competitors bid, just use their random walk. self.b_star is given
-
+        realized_b_star = self.heisenberg_bidding(
+            self.b_star,
+            np.array([0.5, 0.5, 0.5]),
+            ad_opportunities
+        )
         # Calculate impressions won
         imps = np.asarray(
-            [np.sum(np.asarray(realized_bid[i]) > self.b_star[i]) for i in range(self.n_slots)]
+            [np.sum(np.asarray(realized_bid[i]) > np.asarray(realized_b_star[i])) for i in range(self.n_slots)]
         )
 
         # print("imps")
@@ -260,7 +265,7 @@ class MPC:
             cost: float,
             clicks: float
     ) -> Dict:
-        """
+        """update alpha and beta parameters
         :param lam_cpc_vars: forgetting factor
         :param alpha_old: shape parameter
         :param beta_old: scale parameter
@@ -401,7 +406,7 @@ class MPC:
 
         self.bid_uncertainty = alpha ** (-1 / 2)
 
-        return None
+        return self.bid_uncertainty
 
     def update_history(self, old_array: np.ndarray, x: np.ndarray) -> np.ndarray:
         """

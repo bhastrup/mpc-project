@@ -36,21 +36,45 @@ for i in range(1000):
 
 
 # Run the simulation
-T = 30
+T = 100
 k = 0
+
+# initialize arrays for historical data
+running_total_cost = []
+cost_array = []
+slope_array = []
+ctr_array = []
+bstar_array = []
+invcpc_array = []
+clicks_array = []
+imps_array = []
+alpha_array = []
+beta_array = []
+bid_array = []
+bid_pred = []
+ustar_array = []
+bu_array = []
+u_values = []
+
 for k in range(T - N):
 
     # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b*
-    mpc.update_market()
+    market_params = mpc.update_market()
+    ctr_array.append(market_params['ctr'])
+    bstar_array.append(market_params['b_star'])
 
     # 2. Simulate action data + ad serving
     ad_data = mpc.simulate_data()
 
     cost = ad_data["cost"]
-    imps = ad_data["imps"]
-    clicks = ad_data["clicks"]
+    cost_array.append(cost)
+    running_total_cost.append(sum(cost))
 
-    # TODO: Record cost and click data
+    imps = ad_data["imps"]
+    imps_array.append(imps)
+
+    clicks = ad_data["clicks"]
+    clicks_array.append(clicks)
 
     past_costs = mpc.update_history(past_costs, cost)
     past_bids = mpc.update_history(past_bids, mpc.bid_price)
@@ -65,12 +89,17 @@ for k in range(T - N):
     )
 
     alpha = cpc_variables["alpha"]
-    beta = cpc_variables["beta"]
+    alpha_array.append(alpha)
 
-    mpc.set_bid_uncertainty(alpha)
+    beta = cpc_variables["beta"]
+    beta_array.append(beta)
+
+    bu = mpc.set_bid_uncertainty(alpha)
+    bu_array.append(bu)
 
     # 4. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
     cpc_inv = np.transpose(mpc.draw_cpc_inv(alpha, beta, n_samples))
+    invcpc_array.append(np.mean(cpc_inv, axis=1))
 
     # 5. Linearization of cost using weighted Bayesian regression using last 10 obs
     cost_params = mpc.cost_linearization(
@@ -86,6 +115,7 @@ for k in range(T - N):
     # cost slopes, a^omega
     A_mat_all = np.array(cost_params["a"])
     A_mat = np.transpose(A_mat_all[:, :n_samples])
+    slope_array.append(np.mean(A_mat_all, axis=1))
 
     # cost intercepts, b^omega
     b_all = np.array(cost_params["b"])
@@ -106,7 +136,6 @@ for k in range(T - N):
 
     # Construct mean objective
     click_daily = (cpc_inv * A_mat) @ U + (cpc_inv * b) @ I_intercept
-
 
     # Construct variance objective
     dev_list = []
@@ -135,7 +164,7 @@ for k in range(T - N):
     u_upper_bounder = 2 * u_lower_bound
 
     constraints = [
-        -u_lower_bound + 10**-4 <= U,
+        -u_lower_bound + 10**(-3) <= U,
         U <= u_upper_bounder
     ]
 
@@ -146,10 +175,16 @@ for k in range(T - N):
     result = prob.solve(max_iter=50000)
 
     # The optimal value for U is stored in `U.value`.
-    print(U.value)
+    u_values.append(U.value)
 
     # Calculate new bid
     new_bid = U.value[:, 0] + u_star
+    bid_pred.append(U.value)
+    ustar_array.append(u_star)
+    bid_array.append(new_bid)
 
     # Update nominal bid
     mpc.set_bid_price(new_bid)
+
+
+

@@ -8,7 +8,7 @@ t = np.linspace(0., T, n)  # vector of times.
 
 # Define general ad parameters
 n_slots = 3  # number of ad slots
-cov = 0.75  # Covariance between b_star and ctr
+cov = 0.85  # Covariance between b_star and ctr
 
 # Define click-through-rate parameters
 ctr_mu = 0.01  # mean ctr value.
@@ -73,7 +73,7 @@ bid_price_initial = ctr_initial
 bid_uncertainty_initial = 0.5*np.ones(n_slots) # 50% Heisenberg randomization
 
 # Define cost-per-click parameters
-lam_cpc_vars = 0.9  # forgetting factor related to CPC var update
+lam_cpc_vars = 0.25  # forgetting factor related to CPC var update
 n_samples = 50
 # gamma (CPC) distribution parameters
 alpha = 1
@@ -81,7 +81,7 @@ beta = 1
 
 # Define weight array for cost linearization
 n_days_cost = 14
-decaying_rate = 0.9
+decaying_rate = 0.95
 weights = [decaying_rate ** i for i in range(n_days_cost)]
 
 # Initialze historic bids and costs for cost_linearization
@@ -110,5 +110,4 @@ Q_mat = np.diag(q_vec)
 day_mat = np.eye(N)
 
 # Mean variance constant
-alpha_mv = 0.99
-
+alpha_mv = 0.95
