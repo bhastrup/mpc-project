@@ -51,6 +51,7 @@ plt.show()
 #cost versus u
 
 fig, axs = plt.subplots(4, 3)
+
 cumsum_cost = np.cumsum(running_total_cost)
 
 axs[0, 0].plot(cumsum_cost)
@@ -79,8 +80,33 @@ axs[3, 1].plot(beta_array)
 axs[3, 1].set_title('beta')
 axs[3, 2].set_title('bid uncertainties')
 axs[3, 2].plot(bu_array)
+fig.show()
 
+
+# cost daily pred
+selected_day = 20
+cost_daily_pred_20 = cost_daily_pred[selected_day]
+days = list(range(selected_day, selected_day+N))
+plt.plot(y_target, 'r')
+plt.plot(cumsum_cost, 'k')
+plt.plot(
+    days,
+    np.transpose(cost_daily_pred_20),
+    alpha=.25,
+    color='k',
+    linewidth=0.5,
+    linestyle='dashed'
+)
 plt.show()
 
 
+# mean and variance objective plots
+plt.subplot(2, 1, 1)
+plt.plot(mean_terms)
+plt.ylabel('mean objective')
 
+plt.subplot(2, 1, 2)
+plt.plot(variance_terms)
+plt.ylabel('variance objective')
+
+plt.show()

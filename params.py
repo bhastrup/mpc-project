@@ -73,7 +73,7 @@ bid_price_initial = ctr_initial
 bid_uncertainty_initial = 0.5*np.ones(n_slots) # 50% Heisenberg randomization
 
 # Define cost-per-click parameters
-lam_cpc_vars = 0.25  # forgetting factor related to CPC var update
+lam_cpc_vars = 0.5  # forgetting factor related to CPC var update
 n_samples = 50
 # gamma (CPC) distribution parameters
 alpha = 1
@@ -84,7 +84,7 @@ n_days_cost = 14
 decaying_rate = 0.95
 weights = [decaying_rate ** i for i in range(n_days_cost)]
 
-# Initialze historic bids and costs for cost_linearization
+# Initialize historic bids and costs for cost_linearization
 past_costs = np.zeros((n_slots, n_days_cost))
 past_bids = np.zeros((n_slots, n_days_cost))
 
@@ -110,4 +110,4 @@ Q_mat = np.diag(q_vec)
 day_mat = np.eye(N)
 
 # Mean variance constant
-alpha_mv = 0.95
+alpha_mv = 0.93

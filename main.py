@@ -54,7 +54,14 @@ bid_array = []
 bid_pred = []
 ustar_array = []
 bu_array = []
+
 u_values = []
+u_star_values = []
+
+cost_daily_pred = []
+click_daily_pred = []
+mean_terms = []
+variance_terms = []
 
 for k in range(T - N):
 
@@ -113,12 +120,12 @@ for k in range(T - N):
     # Extract slope and intercept, both dim = n_samples x n_slots
 
     # cost slopes, a^omega
-    A_mat_all = np.array(cost_params["a"])
+    A_mat_all = np.array(cost_params['a'])
     A_mat = np.transpose(A_mat_all[:, :n_samples])
     slope_array.append(np.mean(A_mat_all, axis=1))
 
     # cost intercepts, b^omega
-    b_all = np.array(cost_params["b"])
+    b_all = np.array(cost_params['b'])
     b = np.transpose(b_all[:, :n_samples])
 
     # Construct A (trivial)
@@ -130,7 +137,6 @@ for k in range(T - N):
 
     # Initialize MPC optimizer
     U = cp.Variable((mpc.n_slots, N))
-    # U = np.zeros((n_slots, N))
 
     cost_daily = A_mat @ U + b @ I_intercept  # dim = n_samples x N
 
@@ -139,7 +145,8 @@ for k in range(T - N):
 
     # Construct variance objective
     dev_list = []
-    dev_mat = (cost_daily @ I_upper) - y_ref
+    cost_accum = cost_daily @ I_upper + mpc.cost * np.ones((n_samples, N))
+    dev_mat = cost_accum - y_ref
 
     for n in range(N):
         dev_list.append(
@@ -148,9 +155,10 @@ for k in range(T - N):
 
     sum_dev_list = sum(q_vec[i] * dev_list[i] for i in range(N-1))
 
+
     # Solve MPC problem
     objective = cp.Minimize(
-        - alpha_mv / n_samples * cp.sum(click_daily)
+        - (alpha_mv / n_samples) * cp.sum(click_daily)
         + (1-alpha_mv) * cp.sum_squares(dev_mat @ Q_mat) / n_samples
     )
 
@@ -175,16 +183,50 @@ for k in range(T - N):
     result = prob.solve(max_iter=50000)
 
     # The optimal value for U is stored in `U.value`.
-    u_values.append(U.value)
+    u_traj = U.value
+    U_traj = np.zeros((n_slots, N))
+
+    # Daily cost prediction
+    for i in range(len(u_star)):
+        U_traj[i, :] = u_traj[i, :] + u_star[i]
+
+    u_values.append(U_traj)
+    u_star_values.append(u_star)
+
+    # Store historical mean and variance terms
+    cost_daily_pred.append(
+        (A_mat @ U_traj + b @ I_intercept) @ I_upper
+    )
+
+    # Store historical mean and variance terms
+    cost_daily_pred.append(
+        (A_mat @ U_traj + b @ I_intercept) @ I_upper
+    )
+
+    click_daily_pred = (cpc_inv * A_mat) @ U_traj + (cpc_inv * b) @ I_intercept  # mean objective
+
+    dev_list_pred = []
+    cost_accum_pred = cost_daily_pred @ I_upper + mpc.cost * np.ones((n_samples, N))
+    dev_mat_pred = cost_accum_pred - y_ref
+
+    for n in range(N):
+        dev_list_pred.append(
+            dev_mat_pred[:, n]
+        )
+
+    sum_dev_list = sum(q_vec[i] * dev_list_pred[i] for i in range(N-1))
+
+    mean_terms.append(- (alpha_mv / n_samples) * sum(sum(click_daily_pred)))
+    variance_terms.append((1-alpha_mv) * sum(sum(sum((dev_mat_pred @ Q_mat)**2))) / n_samples)
 
     # Calculate new bid
     new_bid = U.value[:, 0] + u_star
+
     bid_pred.append(U.value)
     ustar_array.append(u_star)
     bid_array.append(new_bid)
 
     # Update nominal bid
     mpc.set_bid_price(new_bid)
-
 
 

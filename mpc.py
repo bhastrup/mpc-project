@@ -1,4 +1,5 @@
 import numpy as np
+import random
 from scipy import stats
 from scipy.stats import gamma
 from misc import StanModel_cache
@@ -228,7 +229,7 @@ class MPC:
             ad_opportunities
         )
 
-        # No need to draw competitors bid, just use their random walk. self.b_star is given
+        # Obtain competitors bid b_star
         realized_b_star = self.heisenberg_bidding(
             self.b_star,
             np.array([0.5, 0.5, 0.5]),
@@ -239,17 +240,14 @@ class MPC:
             [np.sum(np.asarray(realized_bid[i]) > np.asarray(realized_b_star[i])) for i in range(self.n_slots)]
         )
 
-        # print("imps")
-        # print(imps)
         # Calculate cost
-        cost = imps * self.b_star
-        # print("cost")
-        # print(cost)
+        cost = np.asarray(
+            [np.sum((np.asarray(realized_bid[i]) > np.asarray(realized_b_star[i]))*realized_b_star[i]) for i in range(self.n_slots)]
+        )
+
         # Simulate clicks
         mu_clicks = imps * self.ctr
-        disp_clicks = 1.0 * mu_clicks
-        # print("disp_clicks")
-        # print(disp_clicks)
+        disp_clicks = 2.0 * mu_clicks
 
         clicks = self.nb_samples(
             mu=mu_clicks,
@@ -409,6 +407,11 @@ class MPC:
         """
 
         self.bid_price = u
+
+        for i in range(len(self.bid_price)):
+            if self.bid_price[i] > 0.03:
+                self.bid_price[i] = random.uniform(0.01, 0.03)
+
 
         # TODO: Define some constraints that prevents setting a dangerously high bid
 
