@@ -1,4 +1,5 @@
 import numpy as np
+import random
 from scipy import stats
 from scipy.stats import gamma
 from misc import StanModel_cache
@@ -71,6 +72,8 @@ class MPC:
         :param p: x exponent
         :param upper_bound: reflection boundary
         :param lower_bound: reflection boundary
+        :param dw: increment
+        :return updated_random_walk: the random walk
         """
 
         # Obtain dimensions of x
@@ -98,6 +101,7 @@ class MPC:
     def update_market(self) -> None:
         """
         Evolves the underlying market parameters.
+        :return market_params: b_star and ctr values
         """
         # Update expected number of impression opportunities for each adslot
         self.ad_opportunities_rate = self.sde_walk(
@@ -148,10 +152,13 @@ class MPC:
             self.ctr_params["lower_bound"],
             dw[:, 1]
         )
-        # print("ctr")
-        # print(self.ctr)
 
-        return None
+        markets_params = {
+            'b_star': self.b_star,
+            'ctr': self.ctr
+        }
+
+        return markets_params
 
     def nb_samples(
             self,
@@ -184,8 +191,10 @@ class MPC:
     ) -> List:
         """
         Randomizes bids to smoothen plant gain related to impressions won vs bid price
-        param: bid_price: nominal bid price
-        param: bid_uncertainty: bid price uncertainty
+        :param bid_price: nominal bid price
+        :param bid_uncertainty: bid price uncertainty
+        :param ad_opportunities: ad opportunities
+        :return randomized_bids: randomized according to heisenberg bidding
         """
 
         randomized_bids = []
@@ -204,6 +213,7 @@ class MPC:
     def simulate_data(self) -> Dict:  # Tuple(np.ndarray, np.ndarray, np.ndarray)
         """
         Observe cost, impressions and click from the auction and ad serving.
+        :return ad_data: cost, imps and clicks
         """
 
         # Draw number of ad opportunities from neg_binom distribution with mean given by mean-reverting sde
@@ -219,24 +229,25 @@ class MPC:
             ad_opportunities
         )
 
-        # No need to draw competitors bid, just use their random walk. self.b_star is given
-
+        # Obtain competitors bid b_star
+        realized_b_star = self.heisenberg_bidding(
+            self.b_star,
+            np.array([0.5, 0.5, 0.5]),
+            ad_opportunities
+        )
         # Calculate impressions won
         imps = np.asarray(
-            [np.sum(np.asarray(realized_bid[i]) > self.b_star[i]) for i in range(self.n_slots)]
+            [np.sum(np.asarray(realized_bid[i]) > np.asarray(realized_b_star[i])) for i in range(self.n_slots)]
         )
 
-        # print("imps")
-        # print(imps)
         # Calculate cost
-        cost = imps * self.b_star
-        # print("cost")
-        # print(cost)
+        cost = np.asarray(
+            [np.sum((np.asarray(realized_bid[i]) > np.asarray(realized_b_star[i]))*realized_b_star[i]) for i in range(self.n_slots)]
+        )
+
         # Simulate clicks
         mu_clicks = imps * self.ctr
-        disp_clicks = 1.0 * mu_clicks
-        # print("disp_clicks")
-        # print(disp_clicks)
+        disp_clicks = 2.0 * mu_clicks
 
         clicks = self.nb_samples(
             mu=mu_clicks,
@@ -258,7 +269,7 @@ class MPC:
             cost: float,
             clicks: float
     ) -> Dict:
-        """
+        """update alpha and beta parameters
         :param lam_cpc_vars: forgetting factor
         :param alpha_old: shape parameter
         :param beta_old: scale parameter
@@ -299,10 +310,20 @@ class MPC:
             self,
             costs: np.ndarray,
             bids: np.ndarray,
-            weights: np.ndarray,
+            weights: List,
             n_days_cost: int,
             n_samples: int
     ) -> Dict:
+        """
+        Find expression for cost as linear function of u:
+        dCost/du=a, if cost is given by Cost=a*u+b.
+        :param costs: array of last 14 days cost
+        :param bids: array of last 14 days bids
+        :param weights: list for weighting data points
+        :param n_days_cost: days used
+        :param n_samples: number of samples used
+        :return cost_params: a, b and u_star parameters
+        """
 
         a_params = []
         b_params = []
@@ -387,11 +408,16 @@ class MPC:
 
         self.bid_price = u
 
+        for i in range(len(self.bid_price)):
+            if self.bid_price[i] > 0.03:
+                self.bid_price[i] = random.uniform(0.01, 0.03)
+
+
         # TODO: Define some constraints that prevents setting a dangerously high bid
 
         return None
 
-    def set_bid_uncertainty(self, alpha: float) -> None:
+    def set_bid_uncertainty(self, alpha: np.ndarray) -> None:
         """
         Updates the bid price uncertainty, according to Karlsson page 32, equation (28)
         param alpha: defined in Karlsson page 30, equation (24)
@@ -399,7 +425,7 @@ class MPC:
 
         self.bid_uncertainty = alpha ** (-1 / 2)
 
-        return None
+        return self.bid_uncertainty
 
     def update_history(self, old_array: np.ndarray, x: np.ndarray) -> np.ndarray:
         """
