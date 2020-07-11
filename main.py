@@ -21,7 +21,7 @@ mpc = MPC(
 )
 
 # 0. Initialize campaign without MPC informed bidding
-for i in range(1000):
+for i in range(100):
 
     ad_data = mpc.simulate_data()
     cost = ad_data["cost"]
@@ -43,6 +43,8 @@ k = 0
 running_total_cost = []
 cost_array = []
 slope_array = []
+slope_array_mean = []
+intercept_array = []
 ctr_array = []
 bstar_array = []
 invcpc_array = []
@@ -63,6 +65,7 @@ click_daily_pred = []
 mean_terms = []
 variance_terms = []
 
+
 for k in range(T - N):
 
     # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b*
@@ -74,6 +77,7 @@ for k in range(T - N):
     ad_data = mpc.simulate_data()
 
     cost = ad_data["cost"]
+    mpc.update_spend(cost)
     cost_array.append(cost)
     running_total_cost.append(sum(cost))
 
@@ -106,7 +110,7 @@ for k in range(T - N):
 
     # 4. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
     cpc_inv = np.transpose(mpc.draw_cpc_inv(alpha, beta, n_samples))
-    invcpc_array.append(np.mean(cpc_inv, axis=1))
+    invcpc_array.append(np.mean(cpc_inv, axis=0))
 
     # 5. Linearization of cost using weighted Bayesian regression using last 10 obs
     cost_params = mpc.cost_linearization(
@@ -122,11 +126,13 @@ for k in range(T - N):
     # cost slopes, a^omega
     A_mat_all = np.array(cost_params['a'])
     A_mat = np.transpose(A_mat_all[:, :n_samples])
-    slope_array.append(np.mean(A_mat_all, axis=1))
+    slope_array.append(A_mat)
+    slope_array_mean.append(np.mean(A_mat_all, axis=1))
 
     # cost intercepts, b^omega
     b_all = np.array(cost_params['b'])
     b = np.transpose(b_all[:, :n_samples])
+    intercept_array.append(b)
 
     # Construct A (trivial)
     A = np.eye(2)
@@ -155,7 +161,6 @@ for k in range(T - N):
 
     sum_dev_list = sum(q_vec[i] * dev_list[i] for i in range(N-1))
 
-
     # Solve MPC problem
     objective = cp.Minimize(
         - (alpha_mv / n_samples) * cp.sum(click_daily)
@@ -180,7 +185,7 @@ for k in range(T - N):
     prob = cp.Problem(objective, constraints)
 
     # The optimal objective value is returned by `prob.solve()`.
-    result = prob.solve(max_iter=50000)
+    result = prob.solve(max_iter=100000)
 
     # The optimal value for U is stored in `U.value`.
     u_traj = U.value
@@ -192,11 +197,6 @@ for k in range(T - N):
 
     u_values.append(U_traj)
     u_star_values.append(u_star)
-
-    # Store historical mean and variance terms
-    cost_daily_pred.append(
-        (A_mat @ U_traj + b @ I_intercept) @ I_upper
-    )
 
     # Store historical mean and variance terms
     cost_daily_pred.append(
@@ -217,7 +217,7 @@ for k in range(T - N):
     sum_dev_list = sum(q_vec[i] * dev_list_pred[i] for i in range(N-1))
 
     mean_terms.append(- (alpha_mv / n_samples) * sum(sum(click_daily_pred)))
-    variance_terms.append((1-alpha_mv) * sum(sum(sum((dev_mat_pred @ Q_mat)**2))) / n_samples)
+    variance_terms.append((1-alpha_mv) * np.sum((dev_mat_pred @ Q_mat)**2) / n_samples)
 
     # Calculate new bid
     new_bid = U.value[:, 0] + u_star

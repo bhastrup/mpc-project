@@ -408,9 +408,9 @@ class MPC:
 
         self.bid_price = u
 
-        for i in range(len(self.bid_price)):
-            if self.bid_price[i] > 0.03:
-                self.bid_price[i] = random.uniform(0.01, 0.03)
+        #for i in range(len(self.bid_price)):
+        #    if self.bid_price[i] > 0.03:
+        #        self.bid_price[i] = random.uniform(0.01, 0.03)
 
 
         # TODO: Define some constraints that prevents setting a dangerously high bid
@@ -423,7 +423,7 @@ class MPC:
         param alpha: defined in Karlsson page 30, equation (24)
         """
 
-        self.bid_uncertainty = alpha ** (-1 / 2)
+        #self.bid_uncertainty = alpha ** (-1 / 2)
 
         return self.bid_uncertainty
 
@@ -436,3 +436,9 @@ class MPC:
         new_array[:, 0] = x
 
         return new_array
+
+    def update_spend(self, cost: np.ndarray) -> None:
+
+        self.cost += sum(cost)
+
+        return None

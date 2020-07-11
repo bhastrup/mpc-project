@@ -57,7 +57,7 @@ cumsum_cost = np.cumsum(running_total_cost)
 axs[0, 0].plot(cumsum_cost)
 axs[0, 0].plot(y_target)
 axs[0, 0].set_title('cost evolution')
-axs[0, 1].plot(slope_array)
+axs[0, 1].plot(slope_array_mean)
 axs[0, 1].set_title('slope values')
 axs[0, 2].plot(clicks_array)
 axs[0, 2].set_title('clicks')
@@ -70,7 +70,7 @@ axs[1, 2].set_title('cpc_inv')
 axs[2, 0].plot(imps_array)
 axs[2, 0].set_title('imps')
 axs[2, 1].plot(bid_array)
-axs[2, 1].set_ylim(0, 0.05)
+axs[2, 1].set_ylim(0, 0.03)
 axs[2, 1].set_title('bids')
 axs[2, 2].plot(cost_array)
 axs[2, 2].set_title('cost')
@@ -82,6 +82,9 @@ axs[3, 2].set_title('bid uncertainties')
 axs[3, 2].plot(bu_array)
 fig.show()
 
+plt.plot(y_target)
+plt.plot(cumsum_cost)
+plt.show()
 
 # cost daily pred
 selected_day = 20
@@ -109,4 +112,25 @@ plt.subplot(2, 1, 2)
 plt.plot(variance_terms)
 plt.ylabel('variance objective')
 
+plt.show()
+
+# grad plots
+# dim(slope_array) = 86x(50x3)
+# dim(intercept_array) = 86x(50x3)
+slope_daily_20 = slope_array[80]
+plt.hist(slope_daily_20[:, 0], bins=15, alpha=0.5, histtype='bar', ec='black')
+plt.show()
+
+intercept_daily_20 = intercept_array[selected_day]
+u_20 = u_values[selected_day]
+
+cost_lin = slope_daily_20 * np.transpose(u_20)
+
+plt.plot(np.transpose(slope_daily_20[0, :]))
+plt.show()
+
+
+#### cost single plot
+plt.plot(cumsum_cost)
+plt.plot(y_target)
 plt.show()

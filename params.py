@@ -1,7 +1,7 @@
 import numpy as np
 
 # Define MPC parameters
-N = 14  # Time horizon.
+N = 7  # Time horizon.
 T = 100  # Campaign length.
 n = 1000  # number of time steps.
 t = np.linspace(0., T, n)  # vector of times.
@@ -110,4 +110,4 @@ Q_mat = np.diag(q_vec)
 day_mat = np.eye(N)
 
 # Mean variance constant
-alpha_mv = 0.93
+alpha_mv = 0.9
