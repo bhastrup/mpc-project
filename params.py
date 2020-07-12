@@ -1,13 +1,13 @@
 import numpy as np
 
 # Define MPC parameters
-N = 14  # Time horizon.
-T = 100  # Campaign length.
+N = 7  # Time horizon.
+T = 30  # Campaign length.
 n = 1000  # number of time steps.
 t = np.linspace(0., T, n)  # vector of times.
 
 # Define general ad parameters
-n_slots = 3  # number of ad slots
+n_slots = 5  # number of ad slots
 cov = 0.85  # Covariance between b_star and ctr
 
 # Define click-through-rate parameters
@@ -30,7 +30,7 @@ ctr_params = {
 }
 
 # Define parameters related to opportunities
-ad_opportunities_mu = 10000
+ad_opportunities_mu = 17500
 ad_opportunities_rate_initial = np.repeat(ad_opportunities_mu, n_slots)
 ad_opportunities_lambda = 0.0001
 ad_opportunities_delta = 2
@@ -70,7 +70,7 @@ b_star_params = {
 }
 
 bid_price_initial = ctr_initial
-bid_uncertainty_initial = 0.5*np.ones(n_slots) # 50% Heisenberg randomization
+bid_uncertainty_initial = 0.5*np.ones(n_slots)  # 50% Heisenberg randomization
 
 # Define cost-per-click parameters
 lam_cpc_vars = 0.5  # forgetting factor related to CPC var update
@@ -90,7 +90,7 @@ past_bids = np.zeros((n_slots, n_days_cost))
 
 
 # Campaign budget
-budget = 10000
+budget = 20000
 y_target = np.linspace(0, budget, T+1)
 
 
@@ -110,4 +110,4 @@ Q_mat = np.diag(q_vec)
 day_mat = np.eye(N)
 
 # Mean variance constant
-alpha_mv = 0.93
+alpha_mv = 0.95

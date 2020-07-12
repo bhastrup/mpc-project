@@ -21,7 +21,7 @@ mpc = MPC(
 )
 
 # 0. Initialize campaign without MPC informed bidding
-for i in range(1000):
+for i in range(100):
 
     ad_data = mpc.simulate_data()
     cost = ad_data["cost"]
@@ -35,16 +35,16 @@ for i in range(1000):
     mpc.set_bid_price(u)
 
 
-# Run the simulation
-T = 100
-k = 0
-
 # initialize arrays for historical data
 running_total_cost = []
 cost_array = []
+mpc_cost_array = []
 slope_array = []
+slope_array_mean = []
+intercept_array = []
 ctr_array = []
 bstar_array = []
+ad_opportunities_rate_array = []
 invcpc_array = []
 clicks_array = []
 imps_array = []
@@ -62,18 +62,22 @@ cost_daily_pred = []
 click_daily_pred = []
 mean_terms = []
 variance_terms = []
+y_ref_array = []
+
 
 for k in range(T - N):
 
-    # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b*
+    # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b_star
     market_params = mpc.update_market()
     ctr_array.append(market_params['ctr'])
     bstar_array.append(market_params['b_star'])
+    ad_opportunities_rate_array.append(market_params['ad_opportunities_rate'])
 
     # 2. Simulate action data + ad serving
     ad_data = mpc.simulate_data()
 
     cost = ad_data["cost"]
+    mpc.update_spend(cost)
     cost_array.append(cost)
     running_total_cost.append(sum(cost))
 
@@ -106,7 +110,7 @@ for k in range(T - N):
 
     # 4. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
     cpc_inv = np.transpose(mpc.draw_cpc_inv(alpha, beta, n_samples))
-    invcpc_array.append(np.mean(cpc_inv, axis=1))
+    invcpc_array.append(np.mean(cpc_inv, axis=0))
 
     # 5. Linearization of cost using weighted Bayesian regression using last 10 obs
     cost_params = mpc.cost_linearization(
@@ -122,18 +126,22 @@ for k in range(T - N):
     # cost slopes, a^omega
     A_mat_all = np.array(cost_params['a'])
     A_mat = np.transpose(A_mat_all[:, :n_samples])
-    slope_array.append(np.mean(A_mat_all, axis=1))
+    slope_array.append(A_mat)
+    slope_array_mean.append(np.mean(A_mat_all, axis=1))
 
     # cost intercepts, b^omega
     b_all = np.array(cost_params['b'])
     b = np.transpose(b_all[:, :n_samples])
+    intercept_array.append(b)
 
     # Construct A (trivial)
     A = np.eye(2)
 
     # Calculate reference trajectory
+    mpc_cost_array.append(mpc.cost)
     y_ref = np.linspace(mpc.cost, y_target[k+N], N+1)[1:]  # dim = N
     y_ref = np.outer(np.ones(n_samples), y_ref)  # dim = n_samples x N
+    y_ref_array.append(y_ref)
 
     # Initialize MPC optimizer
     U = cp.Variable((mpc.n_slots, N))
@@ -154,7 +162,6 @@ for k in range(T - N):
         )
 
     sum_dev_list = sum(q_vec[i] * dev_list[i] for i in range(N-1))
-
 
     # Solve MPC problem
     objective = cp.Minimize(
@@ -180,7 +187,7 @@ for k in range(T - N):
     prob = cp.Problem(objective, constraints)
 
     # The optimal objective value is returned by `prob.solve()`.
-    result = prob.solve(max_iter=50000)
+    result = prob.solve(max_iter=100000)
 
     # The optimal value for U is stored in `U.value`.
     u_traj = U.value
@@ -195,15 +202,10 @@ for k in range(T - N):
 
     # Store historical mean and variance terms
     cost_daily_pred.append(
-        (A_mat @ U_traj + b @ I_intercept) @ I_upper
+        (A_mat @ u_traj + b @ I_intercept) @ I_upper
     )
 
-    # Store historical mean and variance terms
-    cost_daily_pred.append(
-        (A_mat @ U_traj + b @ I_intercept) @ I_upper
-    )
-
-    click_daily_pred = (cpc_inv * A_mat) @ U_traj + (cpc_inv * b) @ I_intercept  # mean objective
+    click_daily_pred = (cpc_inv * A_mat) @ u_traj + (cpc_inv * b) @ I_intercept  # mean objective
 
     dev_list_pred = []
     cost_accum_pred = cost_daily_pred @ I_upper + mpc.cost * np.ones((n_samples, N))
@@ -217,7 +219,7 @@ for k in range(T - N):
     sum_dev_list = sum(q_vec[i] * dev_list_pred[i] for i in range(N-1))
 
     mean_terms.append(- (alpha_mv / n_samples) * sum(sum(click_daily_pred)))
-    variance_terms.append((1-alpha_mv) * sum(sum(sum((dev_mat_pred @ Q_mat)**2))) / n_samples)
+    variance_terms.append((1-alpha_mv) * np.sum((dev_mat_pred @ Q_mat)**2) / n_samples)
 
     # Calculate new bid
     new_bid = U.value[:, 0] + u_star
@@ -228,5 +230,7 @@ for k in range(T - N):
 
     # Update nominal bid
     mpc.set_bid_price(new_bid)
+
+
 
 

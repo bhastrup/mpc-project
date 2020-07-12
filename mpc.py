@@ -101,7 +101,7 @@ class MPC:
     def update_market(self) -> None:
         """
         Evolves the underlying market parameters.
-        :return market_params: b_star and ctr values
+        :return market_params: b_star, ctr values and ad_opportunities_rate
         """
         # Update expected number of impression opportunities for each adslot
         self.ad_opportunities_rate = self.sde_walk(
@@ -114,8 +114,7 @@ class MPC:
             self.ad_opportunities_params["lower_bound"],
             np.random.randn(self.n_slots)
         )
-        # print("ad_opportunities_rate")
-        # print(self.ad_opportunities_rate)
+
         # Specify correlation between ctr and b_star
         mean = np.zeros(2)
         cov_matrix = np.array(
@@ -139,8 +138,7 @@ class MPC:
             self.b_star_params["lower_bound"],
             dw[:, 0]
         )
-        # print("b_star")
-        # print(self.b_star)
+
         # Update CTR of each adslot
         self.ctr = self.sde_walk(
             self.ctr,
@@ -154,6 +152,7 @@ class MPC:
         )
 
         markets_params = {
+            'ad_opportunities_rate': self.ad_opportunities_rate,
             'b_star': self.b_star,
             'ctr': self.ctr
         }
@@ -232,7 +231,7 @@ class MPC:
         # Obtain competitors bid b_star
         realized_b_star = self.heisenberg_bidding(
             self.b_star,
-            np.array([0.5, 0.5, 0.5]),
+            1 * np.ones(self.n_slots),
             ad_opportunities
         )
         # Calculate impressions won
@@ -247,7 +246,7 @@ class MPC:
 
         # Simulate clicks
         mu_clicks = imps * self.ctr
-        disp_clicks = 2.0 * mu_clicks
+        disp_clicks = 2 * mu_clicks
 
         clicks = self.nb_samples(
             mu=mu_clicks,
@@ -269,7 +268,8 @@ class MPC:
             cost: float,
             clicks: float
     ) -> Dict:
-        """update alpha and beta parameters
+        """
+        update alpha and beta parameters
         :param lam_cpc_vars: forgetting factor
         :param alpha_old: shape parameter
         :param beta_old: scale parameter
@@ -408,13 +408,6 @@ class MPC:
 
         self.bid_price = u
 
-        for i in range(len(self.bid_price)):
-            if self.bid_price[i] > 0.03:
-                self.bid_price[i] = random.uniform(0.01, 0.03)
-
-
-        # TODO: Define some constraints that prevents setting a dangerously high bid
-
         return None
 
     def set_bid_uncertainty(self, alpha: np.ndarray) -> None:
@@ -436,3 +429,20 @@ class MPC:
         new_array[:, 0] = x
 
         return new_array
+
+    def update_spend(self, cost: np.ndarray) -> None:
+
+        self.cost += sum(cost)
+
+        return None
+
+    def plotting(self, *args) -> None:
+        """
+        plotting possibilities:
+            -   control_room: overview of system dynamics
+        """
+
+        if "control_room" in args:
+            
+
+        return None
