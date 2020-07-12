@@ -1,10 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
 class ControlRoom:
     def __init__(
             self,
+            N: int,
             running_total_cost: np.ndarray,
             y_target: np.ndarray,
             slope_array_mean: np.ndarray,
@@ -19,9 +21,11 @@ class ControlRoom:
             beta_array: np.ndarray,
             bid_uncertainty_array: np.ndarray,
             mean_terms: np.ndarray,
-            variance_terms: np.ndarray
+            variance_terms: np.ndarray,
+            cost_daily_pred: np.ndarray
 
     ) -> None:
+        self.N = N
         self.running_total_cost = running_total_cost
         self.y_target = y_target
         self.slope_array_mean = slope_array_mean
@@ -37,6 +41,7 @@ class ControlRoom:
         self.bid_uncertainty_array = bid_uncertainty_array
         self.mean_terms = mean_terms
         self.variance_terms = variance_terms
+        self.cost_daily_pred = cost_daily_pred
 
     def show_control_room(self) -> None:
         """
@@ -45,10 +50,10 @@ class ControlRoom:
 
         # show the control room
         fig, axs = plt.subplots(4, 3, sharex=True)
-        cumsum_cost = np.cumsum(self.running_total_cost)  # accumulated sum of cost
+        self.cumsum_cost = np.cumsum(self.running_total_cost)  # accumulated sum of cost
 
-        axs[0, 0].plot(cumsum_cost)
-        axs[0, 0].plot(self.y_target[:len(cumsum_cost)])
+        axs[0, 0].plot(self.cumsum_cost)
+        axs[0, 0].plot(self.y_target[:len(self.cumsum_cost)])
         axs[0, 0].set_title('Cost evolution')
         axs[0, 1].plot(self.slope_array_mean)
         axs[0, 1].set_title('Cost gradients')
@@ -73,9 +78,9 @@ class ControlRoom:
         axs[3, 2].set_title('Bid uncertainties')
         axs[3, 2].plot(self.bid_uncertainty_array)
 
-        axs[3, 0].set_xlabel('Days')
-        axs[3, 1].set_xlabel('Days')
-        axs[3, 2].set_xlabel('Days')
+        axs[3, 0].set_xlabel('Time [days]')
+        axs[3, 1].set_xlabel('Time [days]')
+        axs[3, 2].set_xlabel('Time [days]')
 
         fig.show()
 
@@ -97,6 +102,80 @@ class ControlRoom:
         plt.show()
 
         return None
+
+    def cost_trajectory(self) -> None:
+        """
+        Display cost trajectory together with target trajectory
+        """
+        plt.plot(self.cumsum_cost, label='Accumulated cost')
+        plt.plot(self.y_target[:len(self.cumsum_cost)], label='Target cost')
+        plt.title('Cost trajectories')
+        plt.legend()
+        plt.xlabel('Time [Days]')
+        plt.show()
+
+        return None
+
+    def prediction_horizon(
+            self,
+            selected_day: int,
+            I_upper: np.ndarray,
+            y_target: np.ndarray
+    ) -> None:
+        """
+        Display cost trajectories with predicted cost
+        """
+
+        cost_daily_pred_selected_day = self.cost_daily_pred[selected_day] @ I_upper
+        c_shape = cost_daily_pred_selected_day.shape
+
+        cost_daily_pred_selected_day_shift = np.append(
+            np.ones((c_shape[0], 1)) * self.cumsum_cost[selected_day],
+            cost_daily_pred_selected_day + np.ones(c_shape) * self.cumsum_cost[selected_day],
+            axis=1
+        )
+
+        days = list(range(selected_day, selected_day + self.N + 1))
+
+        fig = plt.figure(figsize=(14, 10))
+        ax = plt.axes()
+
+        ax.plot(selected_day, self.cumsum_cost[selected_day], 'o')
+        ax.plot(y_target[0:len(self.cumsum_cost)], 'r', linewidth=3, label='Target cost')
+        ax.plot(self.cumsum_cost, 'b', linewidth=3, label='Accumulated cost')
+        ax.plot(
+            days,
+            np.transpose(cost_daily_pred_selected_day_shift),
+            alpha=.25,
+            color='green',
+            linewidth=0.5
+        )
+        axins = zoomed_inset_axes(ax, 0.5, loc=1)  # zoom = .2
+        axins.plot(selected_day, self.cumsum_cost[selected_day], 'o')
+        axins.plot(y_target[0:len(self.cumsum_cost)], 'r', linewidth=3, label='Target cost')
+        axins.plot(self.cumsum_cost, 'b', linewidth=3, label='Accumulated cost')
+        axins.plot(
+            days,
+            np.transpose(cost_daily_pred_selected_day_shift),
+            alpha=.25,
+            color='green',
+            linewidth=0.5
+        )
+        axins.set_xlim(selected_day, selected_day+7)
+        axins.set_ylim(6900, 14000)
+        plt.xticks(visible=False)
+        plt.yticks(visible=False)
+        mark_inset(ax, axins, loc1=1, loc2=2, fc="none", ec="0.5")
+        plt.draw()
+
+        plt.xlabel('Time [Days]')
+
+        plt.show()
+
+        return None
+
+
+
 
 
 

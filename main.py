@@ -199,6 +199,7 @@ for k in range(T - N):
 
 # construct Control room
 cr = ControlRoom(
+    N,
     running_total_cost,
     y_target,
     slope_array_mean,
@@ -213,7 +214,8 @@ cr = ControlRoom(
     beta_array,
     bid_uncertainty_array,
     mean_terms,
-    variance_terms
+    variance_terms,
+    cost_daily_pred
 )
 
 # display control room
@@ -222,4 +224,12 @@ cr.show_control_room()
 # display evolution of mean and variance terms
 cr.mean_vs_variance_obj()
 
+# display cost trajectories
+cr.cost_trajectory()
 
+# display cost trajectories with prediction_horizon
+cr.prediction_horizon(
+    selected_day,
+    I_upper,
+    y_target
+)

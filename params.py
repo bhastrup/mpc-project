@@ -140,3 +140,6 @@ click_daily_pred = []
 mean_terms = []
 variance_terms = []
 y_ref_array = []
+
+# Set day for predictions
+selected_day = 8
