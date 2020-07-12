@@ -1,8 +1,9 @@
 import numpy as np
 from params import *
+from plotting import create_plots
 from mpc import MPC
+from control_room import ControlRoom
 
-from cvxpy_diagonalizing import *
 import cvxpy as cp
 
 # construct MPC class
@@ -33,37 +34,6 @@ for i in range(100):
     # Update to new dum bid_price
     u = mpc.ctr*(1 + 0.1*np.random.randn(mpc.n_slots))
     mpc.set_bid_price(u)
-
-
-# initialize arrays for historical data
-running_total_cost = []
-cost_array = []
-mpc_cost_array = []
-slope_array = []
-slope_array_mean = []
-intercept_array = []
-ctr_array = []
-bstar_array = []
-ad_opportunities_rate_array = []
-invcpc_array = []
-clicks_array = []
-imps_array = []
-alpha_array = []
-beta_array = []
-bid_array = []
-bid_pred = []
-ustar_array = []
-bu_array = []
-
-u_values = []
-u_star_values = []
-
-cost_daily_pred = []
-click_daily_pred = []
-mean_terms = []
-variance_terms = []
-y_ref_array = []
-
 
 for k in range(T - N):
 
@@ -110,7 +80,7 @@ for k in range(T - N):
     beta_array.append(beta)
 
     bu = mpc.set_bid_uncertainty(alpha)
-    bu_array.append(bu)
+    bid_uncertainty_array.append(bu)
 
     # 4. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
     cpc_inv = np.transpose(mpc.draw_cpc_inv(alpha, beta, n_samples))
@@ -173,10 +143,6 @@ for k in range(T - N):
         + (1-alpha_mv) * cp.sum_squares(dev_mat @ Q_mat) / n_samples
     )
 
-    # for testing magnitude of mean and variance objectives
-    # term1 = - alpha_mv / n_samples * sum(click_daily)
-    # term2 = (1-alpha_mv) * np.sum((dev_mat @ Q_mat)**2) / n_samples
-
     # Set constraints
     u_star = cost_params['u_star']
     u_lower_bound = np.outer(u_star, np.ones(N))
@@ -206,7 +172,7 @@ for k in range(T - N):
 
     # Store historical mean and variance terms
     cost_daily_pred.append(
-        (A_mat @ u_traj + b @ I_intercept)
+        A_mat @ u_traj + b @ I_intercept
     )
 
     click_daily_pred = (cpc_inv * A_mat) @ u_traj + (cpc_inv * b) @ I_intercept  # mean objective
@@ -235,6 +201,29 @@ for k in range(T - N):
     # Update nominal bid
     mpc.set_bid_price(new_bid)
 
+# construct Control room
+cr = ControlRoom(
+    running_total_cost,
+    y_target,
+    slope_array_mean,
+    clicks_array,
+    bstar_array,
+    ctr_array,
+    invcpc_array,
+    imps_array,
+    bid_array,
+    cost_array,
+    alpha_array,
+    beta_array,
+    bid_uncertainty_array,
+    mean_terms,
+    variance_terms
+)
 
+# display control room
+cr.show_control_room()
+
+# display evolution of mean and variance terms
+cr.mean_vs_variance_obj()
 
 

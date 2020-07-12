@@ -89,6 +89,7 @@ plt.show()
 selected_day = 12
 cumsum_cost = np.cumsum(running_total_cost)
 cost_daily_pred_selected_day = cost_daily_pred[selected_day] @ I_upper
+
 c_shape = cost_daily_pred_selected_day.shape
 
 cost_daily_pred_selected_day_shift = np.append(
