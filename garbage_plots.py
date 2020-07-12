@@ -88,15 +88,13 @@ plt.show()
 # cost daily pred
 selected_day = 12
 cumsum_cost = np.cumsum(running_total_cost)
-cost_daily_pred_selected_day = cost_daily_pred[selected_day]
+cost_daily_pred_selected_day = cost_daily_pred[selected_day] @ I_upper
 
-inter = np.zeros((50, 7))
+inter = np.zeros((n_samples, N))
 inter[:, :] = cumsum_cost[selected_day]
 
 diff = inter[:, 0] - cost_daily_pred_selected_day[:, 0]
 cost_daily_pred_selected_day_shift = cost_daily_pred_selected_day + diff[:, None]
-
-#y_ref_daily_seleted =
 
 days = list(range(selected_day, selected_day+N))
 plt.plot(y_target[:len(cumsum_cost)], 'r')

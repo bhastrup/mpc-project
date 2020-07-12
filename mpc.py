@@ -2,6 +2,7 @@ import numpy as np
 import random
 from scipy import stats
 from scipy.stats import gamma
+
 from misc import StanModel_cache
 
 from typing import Dict, List
@@ -231,7 +232,7 @@ class MPC:
         # Obtain competitors bid b_star
         realized_b_star = self.heisenberg_bidding(
             self.b_star,
-            1 * np.ones(self.n_slots),
+            .5 * np.ones(self.n_slots),
             ad_opportunities
         )
         # Calculate impressions won
@@ -436,13 +437,7 @@ class MPC:
 
         return None
 
-    def plotting(self, *args) -> None:
-        """
-        plotting possibilities:
-            -   control_room: overview of system dynamics
-        """
 
-        if "control_room" in args:
-            
 
-        return None
+
+

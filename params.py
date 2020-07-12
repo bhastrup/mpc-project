@@ -7,7 +7,7 @@ n = 1000  # number of time steps.
 t = np.linspace(0., T, n)  # vector of times.
 
 # Define general ad parameters
-n_slots = 5  # number of ad slots
+n_slots = 4  # number of ad slots
 cov = 0.85  # Covariance between b_star and ctr
 
 # Define click-through-rate parameters
@@ -111,3 +111,32 @@ day_mat = np.eye(N)
 
 # Mean variance constant
 alpha_mv = 0.95
+
+# initialize arrays for historical data
+running_total_cost = []
+cost_array = []
+mpc_cost_array = []
+slope_array = []
+slope_array_mean = []
+intercept_array = []
+ctr_array = []
+bstar_array = []
+ad_opportunities_rate_array = []
+invcpc_array = []
+clicks_array = []
+imps_array = []
+alpha_array = []
+beta_array = []
+bid_array = []
+bid_pred = []
+ustar_array = []
+bid_uncertainty_array = []
+
+u_values = []
+u_star_values = []
+
+cost_daily_pred = []
+click_daily_pred = []
+mean_terms = []
+variance_terms = []
+y_ref_array = []
