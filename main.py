@@ -77,15 +77,19 @@ for k in range(T - N):
     ad_data = mpc.simulate_data()
 
     cost = ad_data["cost"]
-    mpc.update_spend(cost)
-    cost_array.append(cost)
-    running_total_cost.append(sum(cost))
-
     imps = ad_data["imps"]
-    imps_array.append(imps)
-
     clicks = ad_data["clicks"]
-    clicks_array.append(clicks)
+
+    if k > 0:
+        mpc.update_spend(cost)
+        cost_array.append(cost)
+        running_total_cost.append(sum(cost))
+        imps_array.append(imps)
+        clicks_array.append(clicks)
+    else:
+        running_total_cost.append(sum(cost) * 0)
+        clicks_array.append(clicks * 0)
+        imps_array.append(imps * 0)
 
     past_costs = mpc.update_history(past_costs, cost)
     past_bids = mpc.update_history(past_bids, mpc.bid_price)
@@ -141,7 +145,7 @@ for k in range(T - N):
     mpc_cost_array.append(mpc.cost)
     y_ref = np.linspace(mpc.cost, y_target[k+N], N+1)[1:]  # dim = N
     y_ref = np.outer(np.ones(n_samples), y_ref)  # dim = n_samples x N
-    y_ref_array.append(y_ref)
+    y_ref_array.append(y_ref[0,:])
 
     # Initialize MPC optimizer
     U = cp.Variable((mpc.n_slots, N))
@@ -202,7 +206,7 @@ for k in range(T - N):
 
     # Store historical mean and variance terms
     cost_daily_pred.append(
-        (A_mat @ u_traj + b @ I_intercept) @ I_upper
+        (A_mat @ u_traj + b @ I_intercept)
     )
 
     click_daily_pred = (cpc_inv * A_mat) @ u_traj + (cpc_inv * b) @ I_intercept  # mean objective

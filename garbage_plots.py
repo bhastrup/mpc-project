@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from main import *
+#from main import *
 
 plt.figure(figsize=(16, 16))
 ctrs = np.zeros((200, 10))
@@ -14,7 +14,7 @@ np.mean(ctrs[:, ])
 
 
 ########
-# costs versus bids
+# costs versus bids, Ad slot 0
 plt.plot(past_bids[0, :], past_costs[0, :], '*')
 
 
@@ -88,27 +88,43 @@ plt.show()
 # cost daily pred
 selected_day = 12
 cumsum_cost = np.cumsum(running_total_cost)
-cost_daily_pred_selected_day = cost_daily_pred[selected_day]
+cost_daily_pred_selected_day = cost_daily_pred[selected_day] @ I_upper
+c_shape = cost_daily_pred_selected_day.shape
 
-inter = np.zeros((50, 7))
-inter[:, :] = cumsum_cost[selected_day]
+cost_daily_pred_selected_day_shift = np.append(
+    np.ones((c_shape[0], 1)) * cumsum_cost[selected_day],
+    cost_daily_pred_selected_day + np.ones(c_shape)*cumsum_cost[selected_day],
+    axis=1
+)
 
-diff = inter[:, 0] - cost_daily_pred_selected_day[:, 0]
-cost_daily_pred_selected_day_shift = cost_daily_pred_selected_day + diff[:, None]
+y_ref_daily_seleted = np.append(cumsum_cost[selected_day], y_ref_array[selected_day])
 
-#y_ref_daily_seleted =
-
-days = list(range(selected_day, selected_day+N))
-plt.plot(y_target[:len(cumsum_cost)], 'r')
-plt.plot(cumsum_cost, 'k')
+days = list(range(selected_day, selected_day+N+1))
+plt.figure(figsize=(14,10))
+plt.plot(selected_day, cumsum_cost[selected_day], 'o')
+plt.plot(y_target[0:len(cumsum_cost)], 'r', linewidth=3)
+plt.plot(cumsum_cost, 'b', linewidth=3)
 plt.plot(
     days,
     np.transpose(cost_daily_pred_selected_day_shift),
     alpha=.25,
-    color='k',
+    color='green',
     linewidth=0.5
 )
+plt.plot(days,y_ref_daily_seleted, '*-', c='k', linewidth=3)
+plt.xlim([11, 20]); plt.ylim([6900, 15000])
 plt.show()
+
+# Cost linearization
+
+
+# Bid sequences
+for plot_day in range(0,T-N):
+    plt.figure()
+    for plot_index in range(5):
+        plt.plot(np.arange(0,N), u_values[plot_day][plot_index,:])
+
+
 
 
 # mean and variance objective plots
