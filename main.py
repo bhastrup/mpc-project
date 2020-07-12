@@ -35,18 +35,16 @@ for i in range(100):
     mpc.set_bid_price(u)
 
 
-# Run the simulation
-T = 100
-k = 0
-
 # initialize arrays for historical data
 running_total_cost = []
 cost_array = []
+mpc_cost_array = []
 slope_array = []
 slope_array_mean = []
 intercept_array = []
 ctr_array = []
 bstar_array = []
+ad_opportunities_rate_array = []
 invcpc_array = []
 clicks_array = []
 imps_array = []
@@ -64,14 +62,16 @@ cost_daily_pred = []
 click_daily_pred = []
 mean_terms = []
 variance_terms = []
+y_ref_array = []
 
 
 for k in range(T - N):
 
-    # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b*
+    # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b_star
     market_params = mpc.update_market()
     ctr_array.append(market_params['ctr'])
     bstar_array.append(market_params['b_star'])
+    ad_opportunities_rate_array.append(market_params['ad_opportunities_rate'])
 
     # 2. Simulate action data + ad serving
     ad_data = mpc.simulate_data()
@@ -138,8 +138,10 @@ for k in range(T - N):
     A = np.eye(2)
 
     # Calculate reference trajectory
+    mpc_cost_array.append(mpc.cost)
     y_ref = np.linspace(mpc.cost, y_target[k+N], N+1)[1:]  # dim = N
     y_ref = np.outer(np.ones(n_samples), y_ref)  # dim = n_samples x N
+    y_ref_array.append(y_ref)
 
     # Initialize MPC optimizer
     U = cp.Variable((mpc.n_slots, N))
@@ -200,10 +202,10 @@ for k in range(T - N):
 
     # Store historical mean and variance terms
     cost_daily_pred.append(
-        (A_mat @ U_traj + b @ I_intercept) @ I_upper
+        (A_mat @ u_traj + b @ I_intercept) @ I_upper
     )
 
-    click_daily_pred = (cpc_inv * A_mat) @ U_traj + (cpc_inv * b) @ I_intercept  # mean objective
+    click_daily_pred = (cpc_inv * A_mat) @ u_traj + (cpc_inv * b) @ I_intercept  # mean objective
 
     dev_list_pred = []
     cost_accum_pred = cost_daily_pred @ I_upper + mpc.cost * np.ones((n_samples, N))
@@ -228,5 +230,7 @@ for k in range(T - N):
 
     # Update nominal bid
     mpc.set_bid_price(new_bid)
+
+
 
 

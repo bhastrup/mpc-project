@@ -55,7 +55,7 @@ fig, axs = plt.subplots(4, 3)
 cumsum_cost = np.cumsum(running_total_cost)
 
 axs[0, 0].plot(cumsum_cost)
-axs[0, 0].plot(y_target)
+axs[0, 0].plot(y_target[:len(cumsum_cost)])
 axs[0, 0].set_title('cost evolution')
 axs[0, 1].plot(slope_array_mean)
 axs[0, 1].set_title('slope values')
@@ -70,7 +70,6 @@ axs[1, 2].set_title('cpc_inv')
 axs[2, 0].plot(imps_array)
 axs[2, 0].set_title('imps')
 axs[2, 1].plot(bid_array)
-axs[2, 1].set_ylim(0, 0.03)
 axs[2, 1].set_title('bids')
 axs[2, 2].plot(cost_array)
 axs[2, 2].set_title('cost')
@@ -82,23 +81,32 @@ axs[3, 2].set_title('bid uncertainties')
 axs[3, 2].plot(bu_array)
 fig.show()
 
-plt.plot(y_target)
+plt.plot(y_target[:len(cumsum_cost)])
 plt.plot(cumsum_cost)
 plt.show()
 
 # cost daily pred
-selected_day = 20
-cost_daily_pred_20 = cost_daily_pred[selected_day]
+selected_day = 12
+cumsum_cost = np.cumsum(running_total_cost)
+cost_daily_pred_selected_day = cost_daily_pred[selected_day]
+
+inter = np.zeros((50, 7))
+inter[:, :] = cumsum_cost[selected_day]
+
+diff = inter[:, 0] - cost_daily_pred_selected_day[:, 0]
+cost_daily_pred_selected_day_shift = cost_daily_pred_selected_day + diff[:, None]
+
+#y_ref_daily_seleted =
+
 days = list(range(selected_day, selected_day+N))
-plt.plot(y_target, 'r')
+plt.plot(y_target[:len(cumsum_cost)], 'r')
 plt.plot(cumsum_cost, 'k')
 plt.plot(
     days,
-    np.transpose(cost_daily_pred_20),
+    np.transpose(cost_daily_pred_selected_day_shift),
     alpha=.25,
     color='k',
-    linewidth=0.5,
-    linestyle='dashed'
+    linewidth=0.5
 )
 plt.show()
 
@@ -130,7 +138,6 @@ plt.plot(np.transpose(slope_daily_20[0, :]))
 plt.show()
 
 
-#### cost single plot
-plt.plot(cumsum_cost)
-plt.plot(y_target)
+#
+plt.plot(ad_opportunities_rate_array)
 plt.show()
