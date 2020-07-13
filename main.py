@@ -7,17 +7,17 @@ import cvxpy as cp
 
 # construct MPC class
 mpc = MPC(
-    ctr_mu,
-    n_slots,
-    ad_opportunities_params,
-    ad_opportunities_rate_initial,
-    b_star_params,
-    b_star_initial,
-    ctr_params,
-    ctr_initial,
-    cov,
-    bid_price_initial,
-    bid_uncertainty_initial
+    ctr_mu=ctr_mu,
+    n_slots=n_slots,
+    ad_opportunities_params=ad_opportunities_params,
+    ad_opportunities_rate_initial=ad_opportunities_rate_initial,
+    b_star_params=b_star_params,
+    b_star_initial=b_star_initial,
+    ctr_params=ctr_params,
+    ctr_initial=ctr_initial,
+    cov=cov,
+    bid_price_initial=bid_price_initial,
+    bid_uncertainty_initial=bid_uncertainty_initial
 )
 
 # 0. Initialize campaign without MPC informed bidding
@@ -38,6 +38,8 @@ for k in range(T - N):
 
     # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b_star
     market_params = mpc.update_market()
+
+    # unfold marekts parameters
     ctr_array.append(market_params['ctr'])
     bstar_array.append(market_params['b_star'])
     ad_opportunities_rate_array.append(market_params['ad_opportunities_rate'])
@@ -45,6 +47,7 @@ for k in range(T - N):
     # 2. Simulate action data + ad serving
     ad_data = mpc.simulate_data()
 
+    # unfold ad data
     cost = ad_data["cost"]
     imps = ad_data["imps"]
     clicks = ad_data["clicks"]
@@ -72,6 +75,7 @@ for k in range(T - N):
         clicks
     )
 
+    # unfold the CPC variables
     alpha = cpc_variables["alpha"]
     alpha_array.append(alpha)
 
@@ -202,23 +206,23 @@ for k in range(T - N):
 
 # construct Control room
 cr = ControlRoom(
-    N,
-    running_total_cost,
-    y_target,
-    slope_array_mean,
-    clicks_array,
-    bstar_array,
-    ctr_array,
-    invcpc_array,
-    imps_array,
-    bid_array,
-    cost_array,
-    alpha_array,
-    beta_array,
-    bid_uncertainty_array,
-    mean_terms,
-    variance_terms,
-    cost_daily_pred
+    N=N,
+    running_total_cost=running_total_cost,
+    y_target=y_target,
+    slope_array_mean=slope_array_mean,
+    clicks_array=clicks_array,
+    bstar_array=bstar_array,
+    ctr_array=ctr_array,
+    invcpc_array=invcpc_array,
+    imps_array=imps_array,
+    bid_array=bid_array,
+    cost_array=cost_array,
+    alpha_array=alpha_array,
+    beta_array=beta_array,
+    bid_uncertainty_array=bid_uncertainty_array,
+    mean_terms=mean_terms,
+    variance_terms=variance_terms,
+    cost_daily_pred=cost_daily_pred
 )
 
 # display control room
@@ -232,7 +236,14 @@ cr.cost_trajectory()
 
 # display cost trajectories with prediction_horizon
 cr.prediction_horizon(
-    selected_day,
-    I_upper,
-    y_target
+    selected_day=selected_day,
+    I_upper=I_upper,
+    y_target=y_target
+)
+
+# display plots related to linearization
+cr.linearization_plots(
+    selected_day=selected_day,
+    slope_array=slope_array,
+    intercept_array=intercept_array
 )
