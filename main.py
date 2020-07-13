@@ -1,25 +1,26 @@
 import numpy as np
 from params import *
-#from plotting import create_plots
+from plotting import create_plots
+
 from mpc import MPC
-#from control_room import ControlRoom
+from control_room import ControlRoom
 
 import cvxpy as cp
 from cvxpy.atoms.elementwise.abs import abs as cp_abs
 
 # construct MPC class
 mpc = MPC(
-    ctr_mu,
-    n_slots,
-    ad_opportunities_params,
-    ad_opportunities_rate_initial,
-    b_star_params,
-    b_star_initial,
-    ctr_params,
-    ctr_initial,
-    cov,
-    bid_price_initial,
-    bid_uncertainty_initial
+    ctr_mu=ctr_mu,
+    n_slots=n_slots,
+    ad_opportunities_params=ad_opportunities_params,
+    ad_opportunities_rate_initial=ad_opportunities_rate_initial,
+    b_star_params=b_star_params,
+    b_star_initial=b_star_initial,
+    ctr_params=ctr_params,
+    ctr_initial=ctr_initial,
+    cov=cov,
+    bid_price_initial=bid_price_initial,
+    bid_uncertainty_initial=bid_uncertainty_initial
 )
 
 # 0. Initialize campaign without MPC informed bidding
@@ -40,6 +41,8 @@ for k in range(T - N):
 
     # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b_star
     market_params = mpc.update_market()
+
+    # unfold marekts parameters
     ctr_array.append(market_params['ctr'])
     bstar_array.append(market_params['b_star'])
     ad_opportunities_rate_array.append(market_params['ad_opportunities_rate'])
@@ -47,6 +50,7 @@ for k in range(T - N):
     # 2. Simulate action data + ad serving
     ad_data = mpc.simulate_data()
 
+    # unfold ad data
     cost = ad_data["cost"]
     imps = ad_data["imps"]
     clicks = ad_data["clicks"]
@@ -65,6 +69,9 @@ for k in range(T - N):
     past_costs = mpc.update_history(past_costs, cost)
     past_bids = mpc.update_history(past_bids, mpc.bid_price)
 
+    past_costs_array.append(past_costs)
+    past_bids_array.append(past_bids)
+
     # 3. Update alpha and beta cf. Karlsson p.30, Eq. [24] and [25] and set bid_uncertainty
     cpc_variables = mpc.update_cpc_variables(
         lam_cpc_vars,
@@ -74,6 +81,7 @@ for k in range(T - N):
         clicks
     )
 
+    # unfold the CPC variables
     alpha = cpc_variables["alpha"]
     alpha_array.append(alpha)
 
@@ -116,7 +124,7 @@ for k in range(T - N):
     mpc_cost_array.append(mpc.cost)
     y_ref = np.linspace(mpc.cost, y_target[k+N], N+1)[1:]  # dim = N
     y_ref = np.outer(np.ones(n_samples), y_ref)  # dim = n_samples x N
-    y_ref_array.append(y_ref[0,:])
+    y_ref_array.append(y_ref[0, :])
 
     # Initialize MPC optimizer
     U = cp.Variable((mpc.n_slots, N))
@@ -202,30 +210,35 @@ for k in range(T - N):
     # Calculate new bid
     new_bid = U.value[:, 0] + u_star
 
+    # append bid values
     bid_pred.append(U.value)
     ustar_array.append(u_star)
     bid_array.append(new_bid)
+    u_tilde = cost_params['u_tilde']
+    u_tilde_array.append(u_tilde)
 
     # Update nominal bid
     mpc.set_bid_price(new_bid)
 
 # construct Control room
 cr = ControlRoom(
-    running_total_cost,
-    y_target,
-    slope_array_mean,
-    clicks_array,
-    bstar_array,
-    ctr_array,
-    invcpc_array,
-    imps_array,
-    bid_array,
-    cost_array,
-    alpha_array,
-    beta_array,
-    bid_uncertainty_array,
-    mean_terms,
-    variance_terms
+    N=N,
+    running_total_cost=running_total_cost,
+    y_target=y_target,
+    slope_array_mean=slope_array_mean,
+    clicks_array=clicks_array,
+    bstar_array=bstar_array,
+    ctr_array=ctr_array,
+    invcpc_array=invcpc_array,
+    imps_array=imps_array,
+    bid_array=bid_array,
+    cost_array=cost_array,
+    alpha_array=alpha_array,
+    beta_array=beta_array,
+    bid_uncertainty_array=bid_uncertainty_array,
+    mean_terms=mean_terms,
+    variance_terms=variance_terms,
+    cost_daily_pred=cost_daily_pred
 )
 
 # display control room
@@ -234,4 +247,23 @@ cr.show_control_room()
 # display evolution of mean and variance terms
 cr.mean_vs_variance_obj()
 
+# display cost trajectories
+cr.cost_trajectory()
 
+# display cost trajectories with prediction_horizon
+cr.prediction_horizon(
+    selected_day=selected_day,
+    I_upper=I_upper,
+    y_target=y_target
+)
+
+# display plots related to linearization
+cr.linearization_plots(
+    selected_day=selected_day,
+    slope_array=slope_array,
+    intercept_array=intercept_array,
+    costs=past_costs_array,
+    bids=past_bids_array,
+    n_days_cost=n_days_cost,
+    u_tilde=u_tilde_array
+)

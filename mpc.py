@@ -336,6 +336,7 @@ class MPC:
         b_params = []
 
         u_star = []
+        u_tildes = []
 
         # define Stan file path
         stanfile = 'stanfiles/cost_linearization.stan'
@@ -362,19 +363,22 @@ class MPC:
                 iter=n_samples * 40,
             )
 
-            # Obbtain parameter estimates
+            # Obtain parameter estimates
             params = fit.extract()
             a = params['a']
             b = params['b']
 
+            # save the estimates
             a_params.append(a)
             b_params.append(b)
+            u_tildes.append(u_tilde)
 
-        # Collect parameters in dict
+        # Collect parameters in dictionary
         cost_params = {
             "a": a_params,
             "b": b_params,
-            "u_star": u_star
+            "u_star": u_star,
+            "u_tilde": u_tildes
         }
 
         return cost_params
