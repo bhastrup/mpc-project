@@ -97,6 +97,8 @@ for k in range(T - N):
         n_days_cost=n_days_cost,
         n_samples=n_samples
     )
+    past_costs_array.append(past_costs)
+    past_bids_array.append(past_bids)
 
     # Extract slope and intercept, both dim = n_samples x n_slots
 
@@ -245,5 +247,7 @@ cr.prediction_horizon(
 cr.linearization_plots(
     selected_day=selected_day,
     slope_array=slope_array,
-    intercept_array=intercept_array
+    intercept_array=intercept_array,
+    costs=past_costs_array,
+    bids=past_bids_array
 )
