@@ -1,10 +1,11 @@
 import numpy as np
 from params import *
-from plotting import create_plots
+#from plotting import create_plots
 from mpc import MPC
-from control_room import ControlRoom
+#from control_room import ControlRoom
 
 import cvxpy as cp
+from cvxpy.atoms.elementwise.abs import abs as cp_abs
 
 # construct MPC class
 mpc = MPC(
@@ -148,16 +149,23 @@ for k in range(T - N):
     u_lower_bound = np.outer(u_star, np.ones(N))
     u_upper_bounder = 2 * u_lower_bound
 
+    u_old = mpc.bid_price - u_star
+    U_lag = cp.atoms.affine.hstack.hstack([np.outer(u_old, np.ones((1,1))), U[:,:-1]])
+    #cp.atoms.affine.diff.diff(U, k=1, axis=0).T
+
     constraints = [
         -u_lower_bound + 10**(-3) <= U,
-        U <= u_upper_bounder
+        U <= u_upper_bounder#,
+        #cp.abs(U-U_lag) <= 0.01
+        #-0.1 <= U-U_lag,
+        #U-U_lag <= 0.1
     ]
 
     # Construct the problem
     prob = cp.Problem(objective, constraints)
 
     # The optimal objective value is returned by `prob.solve()`.
-    result = prob.solve(max_iter=100000)
+    result = prob.solve(max_iter=200000)
 
     # The optimal value for U is stored in `U.value`.
     u_traj = U.value

@@ -78,7 +78,7 @@ class MPC:
         """
 
         # Obtain dimensions of x
-        dim_x = len(x_old)
+        # dim_x = len(x_old)
 
         # Compute drift term
         drift_term = - lamba * (x_old - mu)
@@ -87,17 +87,23 @@ class MPC:
         diffusion_term = delta * (x_old ** p) * dw
 
         # Update the random walk
-        updated_random_walk = x_old + drift_term + diffusion_term
+        x_new = x_old + drift_term + diffusion_term
 
         # Reflect output in lower bound
-        lb_diff = updated_random_walk - lower_bound
-        updated_random_walk[lb_diff < 0] = updated_random_walk[lb_diff < 0] - 2 * lb_diff[lb_diff < 0]
+        lb_diff = x_new - lower_bound
+        x_new[lb_diff < 0] = x_new[lb_diff < 0] - 2 * lb_diff[lb_diff < 0]
 
-        ub_diff = updated_random_walk - upper_bound
-        updated_random_walk[ub_diff > 0] = updated_random_walk[ub_diff > 0] - 2 * ub_diff[ub_diff > 0]
+        ub_diff = x_new - upper_bound
+        x_new[ub_diff > 0] = x_new[ub_diff > 0] - 2 * ub_diff[ub_diff > 0]
+
+        # Increase all values, should the average fall below mu.
+        # This is to avoid that it becomes impossible to deliver on budget
+        gab = mu - np.mean(x_new)
+        if gab > 0:
+            x_new += gab
 
         # https://benjaminmoll.com/wp-content/uploads/2019/07/Lecture4_2149.pdf
-        return updated_random_walk
+        return x_new
 
     def update_market(self) -> None:
         """
@@ -406,6 +412,12 @@ class MPC:
         Updates the bid price that was calculated using Model Predictive Control
         :param u: First element of MPC calculated sequence of bid prices
         """
+
+        # Are any bid price negative?
+        n_negative_bids = np.sum(u<0)
+        if n_negative_bids > 0:
+            print("Trying to set a negative bid price!!")
+            u[u<0] = np.random.uniform(low=0.001, high=0.005, size=n_negative_bids)
 
         self.bid_price = u
 
