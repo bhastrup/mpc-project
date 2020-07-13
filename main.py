@@ -66,6 +66,9 @@ for k in range(T - N):
     past_costs = mpc.update_history(past_costs, cost)
     past_bids = mpc.update_history(past_bids, mpc.bid_price)
 
+    past_costs_array.append(past_costs)
+    past_bids_array.append(past_bids)
+
     # 3. Update alpha and beta cf. Karlsson p.30, Eq. [24] and [25] and set bid_uncertainty
     cpc_variables = mpc.update_cpc_variables(
         lam_cpc_vars,
@@ -97,8 +100,6 @@ for k in range(T - N):
         n_days_cost=n_days_cost,
         n_samples=n_samples
     )
-    past_costs_array.append(past_costs)
-    past_bids_array.append(past_bids)
 
     # Extract slope and intercept, both dim = n_samples x n_slots
 
@@ -120,7 +121,7 @@ for k in range(T - N):
     mpc_cost_array.append(mpc.cost)
     y_ref = np.linspace(mpc.cost, y_target[k+N], N+1)[1:]  # dim = N
     y_ref = np.outer(np.ones(n_samples), y_ref)  # dim = n_samples x N
-    y_ref_array.append(y_ref[0,:])
+    y_ref_array.append(y_ref[0, :])
 
     # Initialize MPC optimizer
     U = cp.Variable((mpc.n_slots, N))
@@ -199,9 +200,12 @@ for k in range(T - N):
     # Calculate new bid
     new_bid = U.value[:, 0] + u_star
 
+    # append bid values
     bid_pred.append(U.value)
     ustar_array.append(u_star)
     bid_array.append(new_bid)
+    u_tilde = cost_params['u_tilde']
+    u_tilde_array.append(u_tilde)
 
     # Update nominal bid
     mpc.set_bid_price(new_bid)
@@ -249,5 +253,7 @@ cr.linearization_plots(
     slope_array=slope_array,
     intercept_array=intercept_array,
     costs=past_costs_array,
-    bids=past_bids_array
+    bids=past_bids_array,
+    n_days_cost=n_days_cost,
+    u_tilde=u_tilde_array
 )

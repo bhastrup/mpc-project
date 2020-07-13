@@ -130,10 +130,13 @@ beta_array = []
 bid_array = []
 bid_pred = []
 ustar_array = []
+u_tilde_array = []
 bid_uncertainty_array = []
 
 u_values = []
 u_star_values = []
+past_costs_array = []
+past_bids_array = []
 
 cost_daily_pred = []
 click_daily_pred = []

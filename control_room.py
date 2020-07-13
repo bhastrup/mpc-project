@@ -150,7 +150,7 @@ class ControlRoom:
             color='green',
             linewidth=0.5
         )
-        axins = zoomed_inset_axes(ax, 0.5, loc=1)  # zoom = .2
+        axins = zoomed_inset_axes(ax, 1, loc=1)  # zoom = .2
         axins.plot(selected_day, self.cumsum_cost[selected_day], 'o')
         axins.plot(y_target[0:len(self.cumsum_cost)], 'r', linewidth=3, label='Target cost')
         axins.plot(self.cumsum_cost, 'b', linewidth=3, label='Accumulated cost')
@@ -161,16 +161,74 @@ class ControlRoom:
             color='green',
             linewidth=0.5
         )
-        axins.set_xlim(selected_day, selected_day+7)
-        axins.set_ylim(6900, 14000)
+        axins.set_xlim(selected_day, 10)
+        axins.set_ylim(6900, 8000)
         plt.xticks(visible=False)
         plt.yticks(visible=False)
-        mark_inset(ax, axins, loc1=1, loc2=2, fc="none", ec="0.5")
+        mark_inset(ax, axins, loc1=2, loc2=2, fc="none", ec="0.5")
         plt.draw()
 
         plt.xlabel('Time [Days]')
 
         plt.show()
+
+        return None
+
+    def linearization_plots(
+            self,
+            selected_day: int,
+            slope_array: np.array,
+            intercept_array: np.ndarray,
+            costs: np.ndarray,
+            bids: np.ndarray,
+            n_days_cost: np.ndarray,
+            u_tilde: np.ndarray
+    ) -> None:
+        """
+        dCost/du=a, if cost is given by Cost=a*u+b
+        """
+
+        # Define the data for selected day
+        past_costs = costs[selected_day]
+        past_bids = bids[selected_day]
+        u_tildes = u_tilde[selected_day]
+        slopes = slope_array[selected_day]
+        intercepts = intercept_array[selected_day]
+
+        # Use only the costs from one ad slots
+        past_costs_one_adslot = past_costs[0, :]
+        past_bids_one_adslot = past_bids[0, :]
+        u_tilde_one_adslot = u_tildes[0]
+        slopes_one_adslot = slopes[:, 0]
+        intercepts_one_adslot = intercepts[:, 0]
+
+        # the cost linearization
+        cost_pred = np.transpose(np.outer(slopes_one_adslot, past_bids_one_adslot)) + intercepts_one_adslot
+
+        # show cost versus bid plot
+        plt.scatter(
+            past_bids_one_adslot,
+            past_costs_one_adslot,
+            s=np.linspace(100, 5, n_days_cost),
+            edgecolors='k'
+        )
+
+        plt.plot(
+            past_bids_one_adslot,
+            cost_pred
+        )
+
+        plt.xlabel('Bids')
+        plt.ylabel('Cost')
+        plt.show()
+
+        # Define slopes and intercepts for the selected day and a week forward
+        slopes_selected_days = slope_array[selected_day:selected_day+self.N]
+        intercepts_selected_days = intercept_array[selected_day:selected_day+self.N]
+
+        # Use one of the ad slots for visualization
+        #slopes_adslot1 = slopes_selected_days[]
+        #intercepts_adslot1 = intercepts_selected_days[]
 
         return None
 
