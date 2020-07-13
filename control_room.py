@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
+import seaborn as sns
+
+sns.set()  # Nice plot aesthetic
 
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
@@ -245,6 +248,46 @@ class ControlRoom:
 
         plt.xlabel('Bids')
         plt.ylabel('Cost')
+        plt.show()
+
+        # create associated trace plot
+        self.plot_trace(alpha_one_adslot)
+
+        return None
+
+    def plot_trace(self, param, param_name='a'):
+        """
+        Plot the trace and posterior of a parameter.
+        """
+
+        # Summary statistics
+        mean = np.mean(param)
+        median = np.median(param)
+        cred_min, cred_max = np.percentile(param, 2.5), np.percentile(param, 97.5)
+
+        # Plotting
+        plt.subplot(2, 1, 1)
+        plt.plot(param)
+        plt.xlabel('samples')
+        plt.ylabel(param_name)
+        plt.axhline(mean, color='r', lw=2, linestyle='--')
+        plt.axhline(median, color='c', lw=2, linestyle='--')
+        plt.axhline(cred_min, linestyle=':', color='k', alpha=0.2)
+        plt.axhline(cred_max, linestyle=':', color='k', alpha=0.2)
+        plt.title('Trace and Posterior Distribution for {}'.format(param_name))
+
+        plt.subplot(2, 1, 2)
+        plt.hist(param, 30, density=True);
+        sns.kdeplot(param, shade=True)
+        plt.xlabel(param_name)
+        plt.ylabel('density')
+        plt.axvline(mean, color='r', lw=2, linestyle='--', label='mean')
+        plt.axvline(median, color='c', lw=2, linestyle='--', label='median')
+        plt.axvline(cred_min, linestyle=':', color='k', alpha=0.2, label='95% CI')
+        plt.axvline(cred_max, linestyle=':', color='k', alpha=0.2)
+
+        plt.gcf().tight_layout()
+        plt.legend()
         plt.show()
 
         return None
