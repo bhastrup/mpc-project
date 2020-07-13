@@ -78,7 +78,7 @@ axs[3, 0].set_title('alpha')
 axs[3, 1].plot(beta_array)
 axs[3, 1].set_title('beta')
 axs[3, 2].set_title('bid uncertainties')
-axs[3, 2].plot(bu_array)
+#axs[3, 2].plot(bu_array)
 fig.show()
 
 plt.plot(y_target[:len(cumsum_cost)])
@@ -122,7 +122,7 @@ plt.show()
 # Bid sequences
 for plot_day in range(0,T-N):
     plt.figure()
-    for plot_index in range(5):
+    for plot_index in range(n_slots):
         plt.plot(np.arange(0,N), u_values[plot_day][plot_index,:])
 
 
