@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
+
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
@@ -182,7 +184,12 @@ class ControlRoom:
             costs: np.ndarray,
             bids: np.ndarray,
             n_days_cost: np.ndarray,
-            u_tilde: np.ndarray
+            u_tilde: np.ndarray,
+            u_star: np.ndarray,
+            alpha_new_array: np.ndarray,
+            beta_new_array: np.ndarray,
+            alpha_mean_array: np.ndarray,
+            beta_mean_array: np.ndarray
     ) -> None:
         """
         dCost/du=a, if cost is given by Cost=a*u+b
@@ -192,48 +199,55 @@ class ControlRoom:
         past_costs = costs[selected_day]
         past_bids = bids[selected_day]
         u_tildes = u_tilde[selected_day]
+        u_stars = u_star[selected_day]
         slopes = slope_array[selected_day]
         intercepts = intercept_array[selected_day]
+        alphas = alpha_new_array[selected_day]
+        betas = beta_new_array[selected_day]
+        alpha_mean = alpha_mean_array[selected_day]
+        beta_mean = beta_mean_array[selected_day]
 
         # Use only the costs from one ad slots
         past_costs_one_adslot = past_costs[0, :]
         past_bids_one_adslot = past_bids[0, :]
         u_tilde_one_adslot = u_tildes[0]
+        u_star_one_adslot = u_stars[0]
         slopes_one_adslot = slopes[:, 0]
         intercepts_one_adslot = intercepts[:, 0]
+        alpha_one_adslot = alphas[0]
+        beta_one_adslot = betas[0]
+        alpha_mean_one_adslot = alpha_mean[0]
+        beta_mean_one_adslot = beta_mean[0]
 
-        # the cost linearization
-        cost_pred = np.transpose(np.outer(slopes_one_adslot, past_bids_one_adslot)) + intercepts_one_adslot
+        # Plot a subset of sampled regression lines
+        for _ in range(1000):
+            alpha_p = np.random.choice(alpha_one_adslot)
+            beta_p = np.random.choice(beta_one_adslot)
+            plt.plot(
+                u_tilde_one_adslot + u_star_one_adslot,
+                alpha_p * u_tilde_one_adslot + beta_p,
+                color='lightsteelblue',
+                alpha=0.005
+            )
 
-        # show cost versus bid plot
         plt.scatter(
-            past_bids_one_adslot,
+            u_tilde_one_adslot+u_star_one_adslot,
             past_costs_one_adslot,
-            s=np.linspace(100, 5, n_days_cost),
+            #s=np.linspace(100, 5, n_days_cost),
             edgecolors='k'
         )
 
+        # Plot mean regression line
         plt.plot(
-            past_bids_one_adslot,
-            cost_pred
+            u_tilde_one_adslot+u_star_one_adslot,
+            alpha_mean_one_adslot * u_tilde_one_adslot + beta_mean_one_adslot
         )
 
         plt.xlabel('Bids')
         plt.ylabel('Cost')
         plt.show()
 
-        # Define slopes and intercepts for the selected day and a week forward
-        slopes_selected_days = slope_array[selected_day:selected_day+self.N]
-        intercepts_selected_days = intercept_array[selected_day:selected_day+self.N]
-
-        # Use one of the ad slots for visualization
-        #slopes_adslot1 = slopes_selected_days[]
-        #intercepts_adslot1 = intercepts_selected_days[]
-
         return None
-
-
-
 
 
 

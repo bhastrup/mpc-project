@@ -1,5 +1,7 @@
 import numpy as np
 import random
+import pandas as pd
+import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.stats import gamma
 
@@ -334,6 +336,10 @@ class MPC:
 
         a_params = []
         b_params = []
+        alpha = []
+        beta = []
+        alpha_means = []
+        beta_means = []
 
         u_star = []
         u_tildes = []
@@ -343,6 +349,7 @@ class MPC:
 
         for slots_i in range(self.n_slots):
             u_tilde = bids[slots_i, :] - np.mean(bids[slots_i, :])
+            u_tildes.append(u_tilde)
             u_star.append(np.mean(bids[slots_i, :]))
 
             # create dict for Stan
@@ -371,14 +378,31 @@ class MPC:
             # save the estimates
             a_params.append(a)
             b_params.append(b)
-            u_tildes.append(u_tilde)
+
+            alpha.append(fit['a'])
+            beta.append(fit['b'])
+
+            # save diagnostics
+            summary_dict = fit.summary()
+            df = pd.DataFrame(
+                summary_dict['summary'],
+                columns=summary_dict['summary_colnames'],
+                index=summary_dict['summary_rownames']
+            )
+
+            alpha_means.append(df['mean']['a'])
+            beta_means.append(df['mean']['b'])
 
         # Collect parameters in dictionary
         cost_params = {
             "a": a_params,
             "b": b_params,
             "u_star": u_star,
-            "u_tilde": u_tildes
+            "u_tildes": u_tildes,
+            "alpha": alpha,
+            "beta": beta,
+            "alpha_means": alpha_means,
+            "beta_means": beta_means
         }
 
         return cost_params
@@ -418,10 +442,10 @@ class MPC:
         """
 
         # Are any bid price negative?
-        n_negative_bids = np.sum(u<0)
+        n_negative_bids = np.sum(u < 0)
         if n_negative_bids > 0:
             print("Trying to set a negative bid price!!")
-            u[u<0] = np.random.uniform(low=0.001, high=0.005, size=n_negative_bids)
+            u[u < 0] = np.random.uniform(low=0.001, high=0.005, size=n_negative_bids)
 
         self.bid_price = u
 
