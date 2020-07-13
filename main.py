@@ -1,6 +1,5 @@
 import numpy as np
 from params import *
-from plotting import create_plots
 from mpc import MPC
 from control_room import ControlRoom
 
