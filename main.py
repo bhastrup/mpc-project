@@ -5,6 +5,8 @@ from control_room import ControlRoom
 
 import cvxpy as cp
 from cvxpy.atoms.elementwise.abs import abs as cp_abs
+import random
+random.seed(30)
 
 # construct MPC class
 mpc = MPC(
@@ -223,6 +225,10 @@ for k in range(T - N):
     # Update nominal bid
     mpc.set_bid_price(new_bid)
 
+print(sum(mean_terms))
+print(sum(variance_terms))
+
+
 # construct Control room
 cr = ControlRoom(
     N=N,
@@ -241,7 +247,8 @@ cr = ControlRoom(
     bid_uncertainty_array=bid_uncertainty_array,
     mean_terms=mean_terms,
     variance_terms=variance_terms,
-    cost_daily_pred=cost_daily_pred
+    cost_daily_pred=cost_daily_pred,
+    y_ref_array=y_ref_array
 )
 
 # display control room
@@ -257,7 +264,7 @@ cr.cost_trajectory()
 cr.prediction_horizon(
     selected_day=selected_day,
     I_upper=I_upper,
-    y_target=y_target
+    y_target=y_target,
 )
 
 # display plots related to linearization
@@ -275,3 +282,4 @@ cr.linearization_plots(
     alpha_mean_array=alpha_mean_array,
     beta_mean_array=beta_mean_array
 )
+
