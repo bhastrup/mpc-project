@@ -1,12 +1,12 @@
 import numpy as np
 from params import *
-from plotting import create_plots
-
 from mpc import MPC
 from control_room import ControlRoom
 
 import cvxpy as cp
 from cvxpy.atoms.elementwise.abs import abs as cp_abs
+import random
+random.seed(30)
 
 # construct MPC class
 mpc = MPC(
@@ -95,7 +95,7 @@ for k in range(T - N):
     cpc_inv = np.transpose(mpc.draw_cpc_inv(alpha, beta, n_samples))
     invcpc_array.append(np.mean(cpc_inv, axis=0))
 
-    # 5. Linearization of cost using weighted Bayesian regression using last 10 obs
+    # 5. Linearization of cost using weighted Bayesian regression using last 14 obs
     cost_params = mpc.cost_linearization(
         costs=past_costs,
         bids=past_bids,
@@ -116,6 +116,11 @@ for k in range(T - N):
     b_all = np.array(cost_params['b'])
     b = np.transpose(b_all[:, :n_samples])
     intercept_array.append(b)
+
+    alpha_new_array.append(cost_params['alpha'])
+    beta_new_array.append(cost_params['beta'])
+    alpha_mean_array.append(cost_params['alpha_means'])
+    beta_mean_array.append(cost_params['beta_means'])
 
     # Construct A (trivial)
     A = np.eye(2)
@@ -158,7 +163,7 @@ for k in range(T - N):
     u_upper_bounder = 2 * u_lower_bound
 
     u_old = mpc.bid_price - u_star
-    U_lag = cp.atoms.affine.hstack.hstack([np.outer(u_old, np.ones((1,1))), U[:,:-1]])
+    U_lag = cp.atoms.affine.hstack.hstack([np.outer(u_old, np.ones((1, 1))), U[:, :-1]])
     #cp.atoms.affine.diff.diff(U, k=1, axis=0).T
 
     constraints = [
@@ -214,11 +219,15 @@ for k in range(T - N):
     bid_pred.append(U.value)
     ustar_array.append(u_star)
     bid_array.append(new_bid)
-    u_tilde = cost_params['u_tilde']
+    u_tilde = cost_params['u_tildes']
     u_tilde_array.append(u_tilde)
 
     # Update nominal bid
     mpc.set_bid_price(new_bid)
+
+print(sum(mean_terms))
+print(sum(variance_terms))
+
 
 # construct Control room
 cr = ControlRoom(
@@ -238,7 +247,8 @@ cr = ControlRoom(
     bid_uncertainty_array=bid_uncertainty_array,
     mean_terms=mean_terms,
     variance_terms=variance_terms,
-    cost_daily_pred=cost_daily_pred
+    cost_daily_pred=cost_daily_pred,
+    y_ref_array=y_ref_array
 )
 
 # display control room
@@ -254,7 +264,7 @@ cr.cost_trajectory()
 cr.prediction_horizon(
     selected_day=selected_day,
     I_upper=I_upper,
-    y_target=y_target
+    y_target=y_target,
 )
 
 # display plots related to linearization
@@ -265,5 +275,11 @@ cr.linearization_plots(
     costs=past_costs_array,
     bids=past_bids_array,
     n_days_cost=n_days_cost,
-    u_tilde=u_tilde_array
+    u_tilde=u_tilde_array,
+    u_star=u_star_values,
+    alpha_new_array=alpha_new_array,
+    beta_new_array=beta_new_array,
+    alpha_mean_array=alpha_mean_array,
+    beta_mean_array=beta_mean_array
 )
+

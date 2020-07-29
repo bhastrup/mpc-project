@@ -1,14 +1,14 @@
 import numpy as np
 
 # Define MPC parameters
-N = 7  # Time horizon.
-T = 30  # Campaign length.
+N = 5  # Time horizon.
+T = 31  # Campaign length.
 n = 1000  # number of time steps.
 t = np.linspace(0., T, n)  # vector of times.
 
 # Define general ad parameters
 n_slots = 4  # number of ad slots
-cov = 0.55  # Covariance between b_star and ctr
+cov = 0.75  # Covariance between b_star and ctr
 
 # Define click-through-rate parameters
 ctr_mu = 0.01  # mean ctr value.
@@ -30,14 +30,14 @@ ctr_params = {
 }
 
 # Define parameters related to opportunities
-ad_opportunities_mu = 17500
+ad_opportunities_mu = 15000
 ad_opportunities_rate_initial = np.repeat(ad_opportunities_mu, n_slots)
 ad_opportunities_lambda = 0.0001
 ad_opportunities_delta = 2
 ad_opportunities_p = 0.5
 ad_opportunities_ub = 5 * ad_opportunities_mu
 ad_opportunities_lb = 0.5 * ad_opportunities_mu
-ad_opportunities_phi = 2
+ad_opportunities_phi = .0001
 
 # Setup the ad opportunity dictionary
 ad_opportunities_params = {
@@ -90,7 +90,7 @@ past_bids = np.zeros((n_slots, n_days_cost))
 
 
 # Campaign budget
-budget = 20000
+budget = 7500
 y_target = np.linspace(0, budget, T+1)
 
 
@@ -110,7 +110,7 @@ Q_mat = np.diag(q_vec)
 day_mat = np.eye(N)
 
 # Mean variance constant
-alpha_mv = 0.95
+alpha_mv = 0.05
 
 # initialize arrays for historical data
 running_total_cost = []
@@ -123,6 +123,7 @@ ctr_array = []
 bstar_array = []
 ad_opportunities_rate_array = []
 invcpc_array = []
+invcpc_all_array = []
 clicks_array = []
 imps_array = []
 alpha_array = []
@@ -144,5 +145,10 @@ mean_terms = []
 variance_terms = []
 y_ref_array = []
 
+alpha_new_array = []
+beta_new_array = []
+alpha_mean_array = []
+beta_mean_array = []
+
 # Set day for predictions
-selected_day = 8
+selected_day = 10
