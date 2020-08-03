@@ -2,7 +2,7 @@ import numpy as np
 
 # Define MPC parameters
 N = 5  # Time horizon.
-T = 31  # Campaign length.
+T = 25  # Campaign length.
 n = 1000  # number of time steps.
 t = np.linspace(0., T, n)  # vector of times.
 
