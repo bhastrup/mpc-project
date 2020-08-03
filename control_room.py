@@ -264,14 +264,14 @@ class ControlRoom:
         beta_mean_one_adslot = beta_mean[0]
 
         # Plot a subset of sampled regression lines
-        for _ in range(1000):
+        for _ in range(20):
             alpha_p = np.random.choice(alpha_one_adslot)
             beta_p = np.random.choice(beta_one_adslot)
             plt.plot(
                 u_tilde_one_adslot + u_star_one_adslot,
                 alpha_p * u_tilde_one_adslot + beta_p,
-                color='lightsteelblue',
-                alpha=0.005
+                color='green',
+                alpha=0.3
             )
 
         plt.scatter(

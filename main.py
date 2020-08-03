@@ -6,7 +6,7 @@ from control_room import ControlRoom
 import cvxpy as cp
 from cvxpy.atoms.elementwise.abs import abs as cp_abs
 import random
-random.seed(30)
+random.seed(3)
 
 # construct MPC class
 mpc = MPC(
@@ -37,12 +37,22 @@ for i in range(100):
     u = mpc.ctr*(1 + 0.1*np.random.randn(mpc.n_slots))
     mpc.set_bid_price(u)
 
-for k in range(T - N):
+N_fix = N
+for k in range(T-1):
+
+    if k > T-N_fix:
+        print("Decrease N")
+        N -= 1
+        I_intercept = I_intercept[:,0:N]
+        I_upper = I_upper[0:N, 0:N]
+        Q_mat = np.diag(np.linspace(1, 3, N) / np.sum(np.linspace(1, 3, N)))
+
+    # Are we approacing the terminal date and need to decrease N?
 
     # 1. Evolve market parameters: ad_opportunities_rate, true ctr, and b_star
     market_params = mpc.update_market()
 
-    # unfold marekts parameters
+    # 1.b Save market parameters
     ctr_array.append(market_params['ctr'])
     bstar_array.append(market_params['b_star'])
     ad_opportunities_rate_array.append(market_params['ad_opportunities_rate'])
@@ -50,11 +60,16 @@ for k in range(T - N):
     # 2. Simulate action data + ad serving
     ad_data = mpc.simulate_data()
 
-    # unfold ad data
+    # 2.b, Unfold, update and save cost/bid regression data
     cost = ad_data["cost"]
     imps = ad_data["imps"]
     clicks = ad_data["clicks"]
-
+    past_costs = mpc.update_history(past_costs, cost)
+    past_bids = mpc.update_history(past_bids, mpc.bid_price)
+    past_costs_array.append(past_costs)
+    past_bids_array.append(past_bids)
+    
+    # 2.c, Save cost, imp and click data
     if k > 0:
         mpc.update_spend(cost)
         cost_array.append(cost)
@@ -66,12 +81,6 @@ for k in range(T - N):
         clicks_array.append(clicks * 0)
         imps_array.append(imps * 0)
 
-    past_costs = mpc.update_history(past_costs, cost)
-    past_bids = mpc.update_history(past_bids, mpc.bid_price)
-
-    past_costs_array.append(past_costs)
-    past_bids_array.append(past_bids)
-
     # 3. Update alpha and beta cf. Karlsson p.30, Eq. [24] and [25] and set bid_uncertainty
     cpc_variables = mpc.update_cpc_variables(
         lam_cpc_vars,
@@ -81,21 +90,23 @@ for k in range(T - N):
         clicks
     )
 
-    # unfold the CPC variables
+    # 3.b, Unfold the CPC variables
     alpha = cpc_variables["alpha"]
     alpha_array.append(alpha)
-
     beta = cpc_variables["beta"]
     beta_array.append(beta)
 
+    # 4, Set bid uncertainty using u_u = 1/(sqrt(alpha))
     bu = mpc.set_bid_uncertainty(alpha)
+
+    # 4.b, Save bid uncertainty
     bid_uncertainty_array.append(bu)
 
-    # 4. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
+    # 5. Sample cpc_inv from gamma posterior, cpc_inv ~ Gamma(α(k), β(k))
     cpc_inv = np.transpose(mpc.draw_cpc_inv(alpha, beta, n_samples))
     invcpc_array.append(np.mean(cpc_inv, axis=0))
 
-    # 5. Linearization of cost using weighted Bayesian regression using last 14 obs
+    # 6. Linearization of cost using weighted Bayesian regression using last 14 obs
     cost_params = mpc.cost_linearization(
         costs=past_costs,
         bids=past_bids,
@@ -104,8 +115,7 @@ for k in range(T - N):
         n_samples=n_samples
     )
 
-    # Extract slope and intercept, both dim = n_samples x n_slots
-
+    # 6.b, Extract slope and intercept, both dim = n_samples x n_slots
     # cost slopes, a^omega
     A_mat_all = np.array(cost_params['a'])
     A_mat = np.transpose(A_mat_all[:, :n_samples])
@@ -117,15 +127,14 @@ for k in range(T - N):
     b = np.transpose(b_all[:, :n_samples])
     intercept_array.append(b)
 
+    # 6.c, Save data
     alpha_new_array.append(cost_params['alpha'])
     beta_new_array.append(cost_params['beta'])
     alpha_mean_array.append(cost_params['alpha_means'])
     beta_mean_array.append(cost_params['beta_means'])
 
-    # Construct A (trivial)
-    A = np.eye(2)
 
-    # Calculate reference trajectory
+    # 7. Calculate reference trajectory
     mpc_cost_array.append(mpc.cost)
     y_ref = np.linspace(mpc.cost, y_target[k+N], N+1)[1:]  # dim = N
     y_ref = np.outer(np.ones(n_samples), y_ref)  # dim = n_samples x N
@@ -134,46 +143,36 @@ for k in range(T - N):
     # Initialize MPC optimizer
     U = cp.Variable((mpc.n_slots, N))
 
-    cost_daily = A_mat @ U + b @ I_intercept  # dim = n_samples x N
-
-    # Construct mean objective
+    # 8. Construct mean objective
     click_daily = (cpc_inv * A_mat) @ U + (cpc_inv * b) @ I_intercept
 
-    # Construct variance objective
-    dev_list = []
+    # 9. Construct variance objective
+    cost_daily = A_mat @ U + b @ I_intercept  # dim = n_samples x N
     cost_accum = cost_daily @ I_upper + mpc.cost * np.ones((n_samples, N))
     dev_mat = cost_accum - y_ref
 
-    for n in range(N):
-        dev_list.append(
-            dev_mat[:, n]
-        )
-
-    sum_dev_list = sum(q_vec[i] * dev_list[i] for i in range(N-1))
-
-    # Solve MPC problem
-    objective = cp.Minimize(
-        - (alpha_mv / n_samples) * cp.sum(click_daily)
-        + (1-alpha_mv) * cp.sum_squares(dev_mat @ Q_mat) / n_samples
-    )
-
-    # Set constraints
+    # 10. Set constraints
     u_star = cost_params['u_star']
-    u_lower_bound = np.outer(u_star, np.ones(N))
-    u_upper_bounder = 2 * u_lower_bound
+    u_lower_bound = - np.outer(u_star, np.ones(N)) + 1*10**(-3)
+    u_upper_bound = 0.1*np.ones((n_slots, N)) - np.outer(u_star, np.ones(N))
 
     u_old = mpc.bid_price - u_star
     U_lag = cp.atoms.affine.hstack.hstack([np.outer(u_old, np.ones((1, 1))), U[:, :-1]])
     #cp.atoms.affine.diff.diff(U, k=1, axis=0).T
 
     constraints = [
-        -u_lower_bound + 10**(-3) <= U,
-        U <= u_upper_bounder#,
-        #cp.abs(U-U_lag) <= 0.01
+        u_lower_bound <= U,
+        U <= u_upper_bound,
+        cp_abs(U-U_lag) <= 0.005
         #-0.1 <= U-U_lag,
         #U-U_lag <= 0.1
     ]
 
+    # 10. Calculate MPC objective
+    objective = cp.Minimize(
+        - (alpha_mv / n_samples) * cp.sum(click_daily)
+        + (1-alpha_mv) * (cp.sum_squares(dev_mat @ Q_mat) + cp.sum_squares(U-U_lag) ) / n_samples 
+    )
     # Construct the problem
     prob = cp.Problem(objective, constraints)
 
@@ -198,19 +197,11 @@ for k in range(T - N):
 
     click_daily_pred = (cpc_inv * A_mat) @ u_traj + (cpc_inv * b) @ I_intercept  # mean objective
 
-    dev_list_pred = []
-    cost_accum_pred = cost_daily_pred @ I_upper + mpc.cost * np.ones((n_samples, N))
+    cost_accum_pred = (A_mat @ u_traj + b @ I_intercept) @ I_upper + mpc.cost * np.ones((n_samples, N))
     dev_mat_pred = cost_accum_pred - y_ref
 
-    for n in range(N):
-        dev_list_pred.append(
-            dev_mat_pred[:, n]
-        )
-
-    sum_dev_list = sum(q_vec[i] * dev_list_pred[i] for i in range(N-1))
-
-    mean_terms.append(- (alpha_mv / n_samples) * sum(sum(click_daily_pred)))
-    variance_terms.append((1-alpha_mv) * np.sum((dev_mat_pred @ Q_mat)**2) / n_samples)
+    mean_terms.append( (alpha_mv / n_samples) * sum(sum(click_daily_pred)))
+    variance_terms.append((1-alpha_mv) * np.sum((dev_mat_pred @ Q_mat)**2) / n_samples**2)
 
     # Calculate new bid
     new_bid = U.value[:, 0] + u_star
@@ -231,7 +222,7 @@ print(sum(variance_terms))
 
 # construct Control room
 cr = ControlRoom(
-    N=N,
+    N=N_fix,
     running_total_cost=running_total_cost,
     y_target=y_target,
     slope_array_mean=slope_array_mean,
@@ -259,6 +250,11 @@ cr.mean_vs_variance_obj()
 
 # display cost trajectories
 cr.cost_trajectory()
+
+# Build upper triangular matrix of ones
+I_upper = np.zeros((N_fix, N_fix))
+upper_triangle_indices = np.triu_indices(N_fix)
+I_upper[upper_triangle_indices] = 1  # dim = N x N
 
 # display cost trajectories with prediction_horizon
 cr.prediction_horizon(
